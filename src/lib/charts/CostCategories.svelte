@@ -13,6 +13,8 @@
 
 	interface CostEntry { name: string; amountVnd: number }
 
+	const PALETTE = ['#1273FF', '#14b8a6', '#f59e0b', '#a78bfa', '#f472b6', '#06b6d4', '#10b981', '#ef4444'];
+
 	function parseAdditional(raw: string | CostEntry[]): CostEntry[] {
 		try {
 			const items = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -32,13 +34,11 @@
 		const labels = sorted.map(([name]) => name);
 		const data = sorted.map(([, val]) => val);
 
-		const palette = ['#1273FF', '#14b8a6', '#f59e0b', '#a78bfa', '#f472b6', '#06b6d4', '#10b981', '#ef4444'];
-
 		return {
 			labels,
 			datasets: [{
 				data,
-				backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+				backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
 				borderWidth: 0,
 				borderRadius: 4,
 				barPercentage: 0.6,
@@ -104,10 +104,10 @@
 			{#each categoryData as [name, amount], i}
 				{@const pct = total > 0 ? (amount / total * 100).toFixed(0) : '0'}
 				<div class="category-row">
-					<div class="category-dot" style="background: {palette[i % palette.length]}"></div>
+					<div class="category-dot" style="background: {PALETTE[i % PALETTE.length]}"></div>
 					<span class="category-name">{name}</span>
 					<span class="category-bar-wrap">
-						<span class="category-bar" style="width: {pct}%; background: {palette[i % palette.length]}"></span>
+						<span class="category-bar" style="width: {pct}%; background: {PALETTE[i % PALETTE.length]}"></span>
 					</span>
 					<span class="category-amount">{vnd(amount)}đ</span>
 					<span class="category-pct">{pct}%</span>
