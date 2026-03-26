@@ -24,8 +24,8 @@
 			labels,
 			datasets: [
 				{ label: 'Dầu NP', data: labels.map(l => byDriver.get(l)!.fuel), backgroundColor: '#1273FF', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
-				{ label: 'Bốc xếp', data: labels.map(l => byDriver.get(l)!.loading), backgroundColor: '#5a9fff', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
-				{ label: 'Phát sinh', data: labels.map(l => byDriver.get(l)!.additional), backgroundColor: '#c0d9ff', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
+				{ label: 'Bốc xếp', data: labels.map(l => byDriver.get(l)!.loading), backgroundColor: '#14b8a6', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
+				{ label: 'Phát sinh', data: labels.map(l => byDriver.get(l)!.additional), backgroundColor: '#f59e0b', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
 			],
 		};
 	}

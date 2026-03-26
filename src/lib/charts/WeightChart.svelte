@@ -23,7 +23,7 @@
 			labels,
 			datasets: [
 				{ label: 'Lấy', data: labels.map(l => byDriver.get(l)!.pickup), backgroundColor: '#1273FF', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.6 },
-				{ label: 'Giao', data: labels.map(l => byDriver.get(l)!.delivery), backgroundColor: '#c0d9ff', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.6 },
+				{ label: 'Giao', data: labels.map(l => byDriver.get(l)!.delivery), backgroundColor: '#a78bfa', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.6 },
 			],
 		};
 	}

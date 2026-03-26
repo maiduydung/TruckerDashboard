@@ -25,7 +25,7 @@
 		}
 
 		const labels = [...byDateDriver.keys()].reverse();
-		const colors = ['#1273FF', '#6ba3ff', '#c0d9ff'];
+		const colors = ['#1273FF', '#14b8a6', '#f59e0b', '#a78bfa', '#f472b6'];
 		const driverList = [...drivers];
 
 		return {

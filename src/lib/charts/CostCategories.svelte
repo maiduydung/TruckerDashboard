@@ -32,13 +32,13 @@
 		const labels = sorted.map(([name]) => name);
 		const data = sorted.map(([, val]) => val);
 
-		const blues = ['#1273FF', '#3d8eff', '#6ba3ff', '#8fb8ff', '#b3cdff', '#c0d9ff', '#d6e7ff', '#e8f0fe'];
+		const palette = ['#1273FF', '#14b8a6', '#f59e0b', '#a78bfa', '#f472b6', '#06b6d4', '#10b981', '#ef4444'];
 
 		return {
 			labels,
 			datasets: [{
 				data,
-				backgroundColor: labels.map((_, i) => blues[i % blues.length]),
+				backgroundColor: labels.map((_, i) => palette[i % palette.length]),
 				borderWidth: 0,
 				borderRadius: 4,
 				barPercentage: 0.6,
@@ -102,13 +102,12 @@
 	{#if categoryData.length > 0}
 		<div class="category-list">
 			{#each categoryData as [name, amount], i}
-				{@const blues = ['#1273FF', '#3d8eff', '#6ba3ff', '#8fb8ff', '#b3cdff', '#c0d9ff', '#d6e7ff', '#e8f0fe']}
 				{@const pct = total > 0 ? (amount / total * 100).toFixed(0) : '0'}
 				<div class="category-row">
-					<div class="category-dot" style="background: {blues[i % blues.length]}"></div>
+					<div class="category-dot" style="background: {palette[i % palette.length]}"></div>
 					<span class="category-name">{name}</span>
 					<span class="category-bar-wrap">
-						<span class="category-bar" style="width: {pct}%; background: {blues[i % blues.length]}"></span>
+						<span class="category-bar" style="width: {pct}%; background: {palette[i % palette.length]}"></span>
 					</span>
 					<span class="category-amount">{vnd(amount)}đ</span>
 					<span class="category-pct">{pct}%</span>

@@ -207,14 +207,20 @@
 	.cost-tag {
 		display: inline-block;
 		padding: 2px 8px;
-		background: #e8f0fe;
-		color: #1273FF;
 		border-radius: 12px;
 		font-size: 11px;
 		font-weight: 600;
 		white-space: nowrap;
 		letter-spacing: -0.2px;
 	}
+
+	.cost-tag:nth-child(7n+1) { background: #e8f0fe; color: #1273FF; }
+	.cost-tag:nth-child(7n+2) { background: #ccfbf1; color: #0d9488; }
+	.cost-tag:nth-child(7n+3) { background: #fef3c7; color: #b45309; }
+	.cost-tag:nth-child(7n+4) { background: #ede9fe; color: #7c3aed; }
+	.cost-tag:nth-child(7n+5) { background: #fce7f3; color: #db2777; }
+	.cost-tag:nth-child(7n+6) { background: #cffafe; color: #0891b2; }
+	.cost-tag:nth-child(7n+7) { background: #d1fae5; color: #059669; }
 
 	.total-col { color: #1a1d23; }
 
