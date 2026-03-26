@@ -23,27 +23,30 @@
 		return {
 			labels,
 			datasets: [
-				{ label: 'Dầu NP', data: labels.map(l => byDriver.get(l)!.fuel), backgroundColor: '#1273FF', borderRadius: 4 },
-				{ label: 'Bốc xếp', data: labels.map(l => byDriver.get(l)!.loading), backgroundColor: '#5a9fff', borderRadius: 4 },
-				{ label: 'Phát sinh', data: labels.map(l => byDriver.get(l)!.additional), backgroundColor: '#a3c8ff', borderRadius: 4 },
+				{ label: 'Dầu NP', data: labels.map(l => byDriver.get(l)!.fuel), backgroundColor: '#1273FF', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
+				{ label: 'Bốc xếp', data: labels.map(l => byDriver.get(l)!.loading), backgroundColor: '#5a9fff', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
+				{ label: 'Phát sinh', data: labels.map(l => byDriver.get(l)!.additional), backgroundColor: '#c0d9ff', borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7 },
 			],
 		};
 	}
 
-	const chartOpts = {
-		responsive: true,
-		maintainAspectRatio: false,
-		plugins: {
-			legend: { position: 'top' as const, labels: { usePointStyle: true, pointStyle: 'circle' as const, padding: 16, font: { size: 12, family: 'Inter' } } },
-		},
-		scales: {
-			x: { stacked: true, grid: { display: false } },
-			y: { stacked: true, beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: (v: string | number) => `${Number(v) / 1_000_000}M`, font: { size: 11 } } },
-		},
-	};
-
 	onMount(() => {
-		chart = new Chart(canvas, { type: 'bar', data: buildData(), options: chartOpts });
+		chart = new Chart(canvas, {
+			type: 'bar',
+			data: buildData(),
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } },
+					tooltip: { backgroundColor: '#1a1d23', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, padding: 10, cornerRadius: 8, callbacks: { label: (ctx) => `${ctx.dataset.label}: ${(Number(ctx.raw) / 1_000_000).toFixed(1)}M đ` } },
+				},
+				scales: {
+					x: { stacked: true, grid: { display: false }, ticks: { font: { size: 12, family: 'Inter', weight: 'bold' as const } } },
+					y: { stacked: true, beginAtZero: true, border: { display: false }, grid: { color: '#f3f4f6' }, ticks: { callback: (v) => `${Number(v) / 1_000_000}M`, font: { size: 11, family: 'Inter' }, padding: 8 } },
+				},
+			},
+		});
 		return () => chart?.destroy();
 	});
 

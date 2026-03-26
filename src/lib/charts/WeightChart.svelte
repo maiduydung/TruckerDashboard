@@ -22,26 +22,29 @@
 		return {
 			labels,
 			datasets: [
-				{ label: 'Lấy', data: labels.map(l => byDriver.get(l)!.pickup), backgroundColor: '#1273FF', borderRadius: 6 },
-				{ label: 'Giao', data: labels.map(l => byDriver.get(l)!.delivery), backgroundColor: '#a3c8ff', borderRadius: 6 },
+				{ label: 'Lấy', data: labels.map(l => byDriver.get(l)!.pickup), backgroundColor: '#1273FF', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.6 },
+				{ label: 'Giao', data: labels.map(l => byDriver.get(l)!.delivery), backgroundColor: '#c0d9ff', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.6 },
 			],
 		};
 	}
 
-	const chartOpts = {
-		responsive: true,
-		maintainAspectRatio: false,
-		plugins: {
-			legend: { position: 'top' as const, labels: { usePointStyle: true, pointStyle: 'circle' as const, padding: 16, font: { size: 12, family: 'Inter' } } },
-		},
-		scales: {
-			x: { grid: { display: false } },
-			y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: (v: string | number) => `${Number(v).toLocaleString()} kg`, font: { size: 11 } } },
-		},
-	};
-
 	onMount(() => {
-		chart = new Chart(canvas, { type: 'bar', data: buildData(), options: chartOpts });
+		chart = new Chart(canvas, {
+			type: 'bar',
+			data: buildData(),
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } },
+					tooltip: { backgroundColor: '#1a1d23', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, padding: 10, cornerRadius: 8, callbacks: { label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString()} kg` } },
+				},
+				scales: {
+					x: { grid: { display: false }, ticks: { font: { size: 12, family: 'Inter', weight: 'bold' as const } } },
+					y: { beginAtZero: true, border: { display: false }, grid: { color: '#f3f4f6' }, ticks: { callback: (v) => `${Number(v).toLocaleString()}`, font: { size: 11, family: 'Inter' }, padding: 8 } },
+				},
+			},
+		});
 		return () => chart?.destroy();
 	});
 

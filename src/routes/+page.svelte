@@ -7,6 +7,7 @@
 	import CostBreakdown from '$lib/charts/CostBreakdown.svelte';
 	import WeightChart from '$lib/charts/WeightChart.svelte';
 	import Timeline from '$lib/charts/Timeline.svelte';
+	import CostCategories from '$lib/charts/CostCategories.svelte';
 
 	let drivers: string[] = $state([]);
 	let summary: DashboardSummary | null = $state(null);
@@ -39,6 +40,15 @@
 
 	function handleFilterChange() {
 		loadData();
+	}
+
+	interface CostEntry { name: string; amountVnd: number; note: string }
+
+	function parseAdditional(raw: string | CostEntry[]): CostEntry[] {
+		try {
+			const items = typeof raw === 'string' ? JSON.parse(raw) : raw;
+			return Array.isArray(items) ? items.filter(c => c.name && c.amountVnd > 0) : [];
+		} catch { return []; }
 	}
 </script>
 
@@ -79,18 +89,15 @@
 	{:else if summary && trips.length > 0}
 		<div class="metrics">
 			<div class="metric-card">
-				<div class="metric-icon">🚛</div>
-				<div class="metric-value">{summary.totalTrips} chuyến</div>
+				<div class="metric-value">{summary.totalTrips} <span class="metric-unit">chuyến</span></div>
 				<div class="metric-label">{summary.completedTrips} hoàn tất · {summary.draftTrips} nháp</div>
 			</div>
 			<div class="metric-card">
-				<div class="metric-icon">💰</div>
-				<div class="metric-value">{vnd(summary.totalAdvance)}đ</div>
+				<div class="metric-value">{vnd(summary.totalAdvance)}<span class="metric-unit">đ</span></div>
 				<div class="metric-label">Tiền ứng trước</div>
 			</div>
 			<div class="metric-card">
-				<div class="metric-icon">📊</div>
-				<div class="metric-value muted">{vnd(summary.totalFuel + summary.totalLoading)}đ</div>
+				<div class="metric-value muted">{vnd(summary.totalFuel + summary.totalLoading)}<span class="metric-unit">đ</span></div>
 				<div class="metric-label">Tổng chi phí</div>
 			</div>
 		</div>
@@ -104,7 +111,14 @@
 				<h2>Khối lượng theo tài xế</h2>
 				<WeightChart {trips} />
 			</div>
-			<div class="chart-card chart-full">
+		</div>
+
+		<div class="charts">
+			<div class="chart-card">
+				<h2>Chi phí phát sinh theo loại</h2>
+				<CostCategories {trips} />
+			</div>
+			<div class="chart-card">
 				<h2>Chuyến theo ngày</h2>
 				<Timeline {trips} />
 			</div>
@@ -130,17 +144,28 @@
 				</thead>
 				<tbody>
 					{#each trips as t}
+						{@const costs = parseAdditional(t.additional_costs)}
 						<tr>
 							<td><strong>{t.driver_name}</strong></td>
-							<td>{t.pickup_location} → {t.delivery_location}</td>
+							<td class="route">{t.pickup_location} <span class="arrow">→</span> {t.delivery_location}</td>
 							<td>{formatDate(t.submitted_at)}</td>
 							<td class="number">{t.pickup_weight_kg.toLocaleString()}</td>
 							<td class="number">{t.delivery_weight_kg.toLocaleString()}</td>
 							<td class="number">{vnd(t.advance_payment)}</td>
 							<td class="number">{vnd(t.fuel_nam_phat_vnd)}</td>
 							<td class="number">{vnd(t.loading_fee_vnd)}</td>
-							<td class="number">{vnd(t.additionalTotal)}</td>
-							<td class="number"><strong>{vnd(t.totalCost)}</strong></td>
+							<td class="number">
+								{#if costs.length > 0}
+									<div class="cost-tags">
+										{#each costs as c}
+											<span class="cost-tag" title={c.note || c.name}>{c.name} {vnd(c.amountVnd)}đ</span>
+										{/each}
+									</div>
+								{:else}
+									<span class="text-muted">—</span>
+								{/if}
+							</td>
+							<td class="number total-col"><strong>{vnd(t.totalCost)}</strong></td>
 							<td>
 								{#if t.is_draft}
 									<span class="status status-draft">Nháp</span>
@@ -157,13 +182,56 @@
 		<div class="export-section">
 			<h2>Xuất dữ liệu</h2>
 			<div class="export-bar">
-				<button class="btn" onclick={() => exportCSV(trips)}>📄 CSV</button>
-				<button class="btn" onclick={() => exportExcel(trips)}>📊 Excel</button>
-				<button class="btn" onclick={() => exportJSON(trips)}>🔧 JSON</button>
-				<button class="btn" onclick={() => exportPDF(trips)}>📕 PDF</button>
+				<button class="btn" onclick={() => exportCSV(trips)}>CSV</button>
+				<button class="btn" onclick={() => exportExcel(trips)}>Excel</button>
+				<button class="btn" onclick={() => exportJSON(trips)}>JSON</button>
+				<button class="btn btn-primary" onclick={() => exportPDF(trips)}>PDF</button>
 			</div>
 		</div>
 	{:else}
 		<div class="empty">Không có dữ liệu cho bộ lọc này.</div>
 	{/if}
 </div>
+
+<style>
+	.route { white-space: nowrap; }
+	.arrow { color: #9ca3af; margin: 0 2px; }
+	.text-muted { color: #d1d5db; }
+
+	.cost-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+
+	.cost-tag {
+		display: inline-block;
+		padding: 2px 8px;
+		background: #e8f0fe;
+		color: #1273FF;
+		border-radius: 12px;
+		font-size: 11px;
+		font-weight: 600;
+		white-space: nowrap;
+		letter-spacing: -0.2px;
+	}
+
+	.total-col { color: #1a1d23; }
+
+	.metric-unit {
+		font-size: 14px;
+		font-weight: 600;
+		opacity: 0.7;
+	}
+
+	.btn-primary {
+		background: #1273FF;
+		color: white;
+		border-color: #1273FF;
+	}
+
+	.btn-primary:hover {
+		background: #0d5bbf;
+		border-color: #0d5bbf;
+	}
+</style>

@@ -25,7 +25,7 @@
 		}
 
 		const labels = [...byDateDriver.keys()].reverse();
-		const colors = ['#1273FF', '#425d99', '#a3c8ff'];
+		const colors = ['#1273FF', '#6ba3ff', '#c0d9ff'];
 		const driverList = [...drivers];
 
 		return {
@@ -35,24 +35,29 @@
 				data: labels.map(date => byDateDriver.get(date)?.get(driver) || 0),
 				backgroundColor: colors[i % colors.length],
 				borderRadius: 6,
+				barPercentage: 0.5,
+				categoryPercentage: 0.6,
 			})),
 		};
 	}
 
-	const chartOpts = {
-		responsive: true,
-		maintainAspectRatio: false,
-		plugins: {
-			legend: { position: 'top' as const, labels: { usePointStyle: true, pointStyle: 'circle' as const, padding: 16, font: { size: 12, family: 'Inter' } } },
-		},
-		scales: {
-			x: { grid: { display: false } },
-			y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { stepSize: 1, font: { size: 11 } } },
-		},
-	};
-
 	onMount(() => {
-		chart = new Chart(canvas, { type: 'bar', data: buildData(), options: chartOpts });
+		chart = new Chart(canvas, {
+			type: 'bar',
+			data: buildData(),
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } },
+					tooltip: { backgroundColor: '#1a1d23', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, padding: 10, cornerRadius: 8 },
+				},
+				scales: {
+					x: { grid: { display: false }, ticks: { font: { size: 12, family: 'Inter' } } },
+					y: { beginAtZero: true, border: { display: false }, grid: { color: '#f3f4f6' }, ticks: { stepSize: 1, font: { size: 11, family: 'Inter' }, padding: 8 } },
+				},
+			},
+		});
 		return () => chart?.destroy();
 	});
 
