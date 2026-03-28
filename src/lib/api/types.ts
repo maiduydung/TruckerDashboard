@@ -12,6 +12,9 @@ export interface Trip {
 	fuel_hn_liters: number;
 	loading_fee_vnd: number;
 	additional_costs: string | AdditionalCost[];
+	opening_balance: number;
+	total_cost: number;
+	closing_balance: number;
 	additionalTotal: number;
 	totalCost: number;
 	notes: string;
