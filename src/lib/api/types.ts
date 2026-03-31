@@ -1,13 +1,21 @@
+export interface StopRecord {
+	seq: number;
+	type: 'pickup' | 'delivery';
+	location: string;
+	date: string;
+	weightKg: number;
+	gps: object | null;
+}
+
 export interface Trip {
 	id: string;
 	driver_name: string;
 	advance_payment: number;
-	pickup_date: string;
-	pickup_location: string;
-	pickup_weight_kg: number;
-	delivery_date: string;
-	delivery_location: string;
-	delivery_weight_kg: number;
+	stops: StopRecord[] | string;
+	pickup_locations: string;
+	delivery_locations: string;
+	total_pickup_kg: number;
+	total_delivery_kg: number;
 	fuel_nam_phat_vnd: number;
 	fuel_hn_liters: number;
 	loading_fee_vnd: number;

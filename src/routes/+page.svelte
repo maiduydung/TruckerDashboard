@@ -147,10 +147,10 @@
 						{@const costs = parseAdditional(t.additional_costs)}
 						<tr>
 							<td><strong>{t.driver_name}</strong></td>
-							<td class="route">{t.pickup_location} <span class="arrow">→</span> {t.delivery_location}</td>
+							<td class="route">{t.pickup_locations} <span class="arrow">→</span> {t.delivery_locations}</td>
 							<td>{formatDate(t.submitted_at)}</td>
-							<td class="number">{t.pickup_weight_kg.toLocaleString()}</td>
-							<td class="number">{t.delivery_weight_kg.toLocaleString()}</td>
+							<td class="number">{t.total_pickup_kg.toLocaleString()}</td>
+							<td class="number">{t.total_delivery_kg.toLocaleString()}</td>
 							<td class="number">{vnd(t.advance_payment)}</td>
 							<td class="number">{vnd(t.fuel_nam_phat_vnd)}</td>
 							<td class="number">{vnd(t.loading_fee_vnd)}</td>

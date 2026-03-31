@@ -14,8 +14,8 @@
 		const byDriver = new Map<string, { pickup: number; delivery: number }>();
 		for (const t of trips) {
 			const d = byDriver.get(t.driver_name) || { pickup: 0, delivery: 0 };
-			d.pickup += t.pickup_weight_kg;
-			d.delivery += t.delivery_weight_kg;
+			d.pickup += t.total_pickup_kg;
+			d.delivery += t.total_delivery_kg;
 			byDriver.set(t.driver_name, d);
 		}
 		const labels = [...byDriver.keys()];
