@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fetchSummary, fetchTrips, fetchDrivers } from '$lib/api/client';
-	import type { DashboardSummary, Trip, Filters } from '$lib/api/types';
+	import type { DashboardSummary, Trip, Filters, DisplayRow, StopRecord } from '$lib/api/types';
 	import { vnd, formatDate } from '$lib/format';
 	import { exportCSV, exportExcel, exportJSON, exportPDF } from '$lib/exports/exporter';
 	import CostBreakdown from '$lib/charts/CostBreakdown.svelte';
@@ -16,6 +16,63 @@
 	let error = $state('');
 
 	let filters: Filters = $state({ driver: '', status: '', days: 7 });
+
+	function parseStops(raw: StopRecord[] | string): StopRecord[] {
+		try {
+			const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+			return Array.isArray(arr) ? arr : [];
+		} catch { return []; }
+	}
+
+	function expandTrips(rawTrips: Trip[]): DisplayRow[] {
+		const tripNumberMap = new Map<string, number>();
+		const driverGroups = new Map<string, Trip[]>();
+		for (const t of rawTrips) {
+			if (!driverGroups.has(t.driver_name)) driverGroups.set(t.driver_name, []);
+			driverGroups.get(t.driver_name)!.push(t);
+		}
+		for (const [, dTrips] of driverGroups) {
+			const sorted = [...dTrips].sort(
+				(a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime()
+			);
+			sorted.forEach((t, i) => tripNumberMap.set(t.id, i + 1));
+		}
+
+		const rows: DisplayRow[] = [];
+		for (const t of rawTrips) {
+			const stops = parseStops(t.stops);
+			const pickups = stops.filter(s => s.type === 'pickup');
+			const deliveries = stops.filter(s => s.type === 'delivery');
+			const rowCount = Math.max(pickups.length, deliveries.length, 1);
+
+			for (let i = 0; i < rowCount; i++) {
+				rows.push({
+					tripId: t.id,
+					driverName: t.driver_name,
+					tripNumber: tripNumberMap.get(t.id) || 1,
+					submittedAt: t.submitted_at,
+					isDraft: t.is_draft,
+					pickupLocation: pickups[i]?.location || '',
+					pickupWeightKg: pickups[i]?.weightKg || 0,
+					deliveryLocation: deliveries[i]?.location || '',
+					deliveryWeightKg: deliveries[i]?.weightKg || 0,
+					advancePayment: t.advance_payment,
+					openingBalance: t.opening_balance,
+					fuelNamPhatVnd: t.fuel_nam_phat_vnd,
+					loadingFeeVnd: t.loading_fee_vnd,
+					additionalCosts: t.additional_costs,
+					additionalTotal: t.additionalTotal,
+					totalCost: t.totalCost,
+					closingBalance: t.closing_balance,
+					isFirstRow: i === 0,
+					rowsInGroup: rowCount,
+				});
+			}
+		}
+		return rows;
+	}
+
+	let displayRows: DisplayRow[] = $derived(expandTrips(trips));
 
 	async function loadData() {
 		loading = true;
@@ -130,7 +187,9 @@
 				<thead>
 					<tr>
 						<th>Tài xế</th>
-						<th>Tuyến</th>
+						<th>Chuyến</th>
+						<th>Nơi lấy</th>
+						<th>Nơi giao</th>
 						<th>Ngày</th>
 						<th>KG lấy</th>
 						<th>KG giao</th>
@@ -145,36 +204,62 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each trips as t}
-						{@const costs = parseAdditional(t.additional_costs)}
-						<tr>
-							<td><strong>{t.driver_name}</strong></td>
-							<td class="route">{t.pickup_locations} <span class="arrow">→</span> {t.delivery_locations}</td>
-							<td>{formatDate(t.submitted_at)}</td>
-							<td class="number">{t.total_pickup_kg.toLocaleString()}</td>
-							<td class="number">{t.total_delivery_kg.toLocaleString()}</td>
-							<td class="number">{vnd(t.advance_payment)}</td>
-							<td class="number">{vnd(t.opening_balance)}</td>
-							<td class="number">{vnd(t.fuel_nam_phat_vnd)}</td>
-							<td class="number">{vnd(t.loading_fee_vnd)}</td>
-							<td class="number">
-								{#if costs.length > 0}
-									<div class="cost-tags">
-										{#each costs as c}
-											<span class="cost-tag" title={c.note || c.name}>{c.name} {vnd(c.amountVnd)}đ</span>
-										{/each}
-									</div>
+					{#each displayRows as row, idx}
+						{@const costs = row.isFirstRow ? parseAdditional(row.additionalCosts) : []}
+						{@const isGroupStart = row.isFirstRow && row.rowsInGroup > 1}
+						{@const isGroupCont = !row.isFirstRow}
+						<tr class:group-start={isGroupStart} class:group-cont={isGroupCont}>
+							<td><strong>{row.driverName}</strong></td>
+							<td class="number trip-num">
+								<span class="trip-badge" class:multi={row.rowsInGroup > 1}>{row.tripNumber}</span>
+							</td>
+							<td class="route-cell">
+								{#if row.pickupLocation}
+									{row.pickupLocation}
 								{:else}
 									<span class="text-muted">—</span>
 								{/if}
 							</td>
-							<td class="number total-col"><strong>{vnd(t.totalCost)}</strong></td>
-							<td class="number" style="color: {t.closing_balance < 0 ? '#ef4444' : '#059669'}; font-weight: 600;">{vnd(t.closing_balance)}</td>
-							<td>
-								{#if t.is_draft}
-									<span class="status status-draft">Nháp</span>
+							<td class="route-cell">
+								{#if row.deliveryLocation}
+									{row.deliveryLocation}
 								{:else}
-									<span class="status status-done">Xong</span>
+									<span class="text-muted">—</span>
+								{/if}
+							</td>
+							<td>{row.isFirstRow ? formatDate(row.submittedAt) : ''}</td>
+							<td class="number">{row.pickupWeightKg ? row.pickupWeightKg.toLocaleString() : ''}</td>
+							<td class="number">{row.deliveryWeightKg ? row.deliveryWeightKg.toLocaleString() : ''}</td>
+							<td class="number">{row.isFirstRow ? vnd(row.advancePayment) : ''}</td>
+							<td class="number">{row.isFirstRow ? vnd(row.openingBalance) : ''}</td>
+							<td class="number">{row.isFirstRow ? vnd(row.fuelNamPhatVnd) : ''}</td>
+							<td class="number">{row.isFirstRow ? vnd(row.loadingFeeVnd) : ''}</td>
+							<td class="number">
+								{#if row.isFirstRow}
+									{#if costs.length > 0}
+										<div class="cost-tags">
+											{#each costs as c}
+												<span class="cost-tag" title={c.note || c.name}>{c.name} {vnd(c.amountVnd)}đ</span>
+											{/each}
+										</div>
+									{:else}
+										<span class="text-muted">—</span>
+									{/if}
+								{/if}
+							</td>
+							<td class="number total-col">{#if row.isFirstRow}<strong>{vnd(row.totalCost)}</strong>{/if}</td>
+							<td class="number">
+								{#if row.isFirstRow}
+									<span style="color: {row.closingBalance < 0 ? '#ef4444' : '#059669'}; font-weight: 600;">{vnd(row.closingBalance)}</span>
+								{/if}
+							</td>
+							<td>
+								{#if row.isFirstRow}
+									{#if row.isDraft}
+										<span class="status status-draft">Nháp</span>
+									{:else}
+										<span class="status status-done">Xong</span>
+									{/if}
 								{/if}
 							</td>
 						</tr>
@@ -198,9 +283,36 @@
 </div>
 
 <style>
-	.route { white-space: nowrap; }
-	.arrow { color: #9ca3af; margin: 0 2px; }
 	.text-muted { color: #d1d5db; }
+
+	.route-cell { white-space: nowrap; }
+
+	.trip-num { text-align: center !important; }
+	.trip-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 24px;
+		height: 24px;
+		border-radius: 6px;
+		font-size: 12px;
+		font-weight: 700;
+		background: var(--blue-light);
+		color: var(--blue);
+	}
+	.trip-badge.multi {
+		background: var(--blue);
+		color: white;
+	}
+
+	tr.group-start td { border-bottom: none; }
+	tr.group-cont td {
+		border-top: 1px dashed var(--border);
+		border-bottom: 1px solid var(--border);
+		color: var(--text-muted);
+		font-size: 12px;
+	}
+	tr.group-cont .route-cell { color: var(--text-secondary); font-size: 13px; }
 
 	.cost-tags {
 		display: flex;

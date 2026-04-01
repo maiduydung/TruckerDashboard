@@ -30,6 +30,28 @@ export interface Trip {
 	submitted_at: string;
 }
 
+export interface DisplayRow {
+	tripId: string;
+	driverName: string;
+	tripNumber: number;
+	submittedAt: string;
+	isDraft: boolean;
+	pickupLocation: string;
+	pickupWeightKg: number;
+	deliveryLocation: string;
+	deliveryWeightKg: number;
+	advancePayment: number;
+	openingBalance: number;
+	fuelNamPhatVnd: number;
+	loadingFeeVnd: number;
+	additionalCosts: string | AdditionalCost[];
+	additionalTotal: number;
+	totalCost: number;
+	closingBalance: number;
+	isFirstRow: boolean;
+	rowsInGroup: number;
+}
+
 export interface AdditionalCost {
 	name: string;
 	amountVnd: number;
