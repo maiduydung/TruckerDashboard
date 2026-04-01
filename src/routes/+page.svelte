@@ -135,10 +135,12 @@
 						<th>KG lấy</th>
 						<th>KG giao</th>
 						<th>Tiền ứng</th>
+						<th>Dư đầu</th>
 						<th>Dầu NP</th>
 						<th>Bốc xếp</th>
 						<th>Phát sinh</th>
 						<th>Tổng CP</th>
+						<th>Dư cuối</th>
 						<th>Trạng thái</th>
 					</tr>
 				</thead>
@@ -152,6 +154,7 @@
 							<td class="number">{t.total_pickup_kg.toLocaleString()}</td>
 							<td class="number">{t.total_delivery_kg.toLocaleString()}</td>
 							<td class="number">{vnd(t.advance_payment)}</td>
+							<td class="number">{vnd(t.opening_balance)}</td>
 							<td class="number">{vnd(t.fuel_nam_phat_vnd)}</td>
 							<td class="number">{vnd(t.loading_fee_vnd)}</td>
 							<td class="number">
@@ -166,6 +169,7 @@
 								{/if}
 							</td>
 							<td class="number total-col"><strong>{vnd(t.totalCost)}</strong></td>
+							<td class="number" style="color: {t.closing_balance < 0 ? '#ef4444' : '#059669'}; font-weight: 600;">{vnd(t.closing_balance)}</td>
 							<td>
 								{#if t.is_draft}
 									<span class="status status-draft">Nháp</span>
