@@ -112,8 +112,7 @@
 <div class="container">
 	<div class="header">
 		<div class="header-left">
-			<h1><span class="logo-accent">NhuTin</span> Dashboard</h1>
-			<span class="subtitle">Quản lý vận tải</span>
+			<h1><span class="logo-accent">Nhu Tin</span> Trucker Dashboard</h1>
 		</div>
 		<div class="filters">
 			<select bind:value={filters.driver} onchange={handleFilterChange}>

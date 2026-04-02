@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.8.0 — 2026-04-02
+
+### Google OAuth login
+
+- **Google Sign-In**: Users must authenticate with Google before accessing the dashboard
+- **Email allowlist**: Only `maiduydungvn@gmail.com` and `vuthibichtrang@gmail.com` can access the app
+- **Access denied page**: Unauthorized emails see a denial message with option to switch accounts
+- **User bar**: Shows logged-in user avatar, email, and logout button at the top of the dashboard
+- **Session persistence**: Auth state stored in `sessionStorage` (clears on tab close)
+- **Renamed title**: "NhuTin Dashboard" → "Nhu Tin Trucker Dashboard"
+
 ## v0.7.0 — 2026-04-01
 
 ### Multi-stop trip expansion
