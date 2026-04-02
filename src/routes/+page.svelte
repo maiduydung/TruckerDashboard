@@ -17,6 +17,11 @@
 
 	let filters: Filters = $state({ driver: '', status: '', days: 7 });
 
+	function getSummaryTotalCost(summaryValue: DashboardSummary): number {
+		const summaryAny = summaryValue as unknown as { totalCost?: number; total_cost?: number };
+		return summaryAny.totalCost ?? summaryAny.total_cost ?? summaryValue.totalFuel + summaryValue.totalLoading;
+	}
+
 	function parseStops(raw: StopRecord[] | string): StopRecord[] {
 		try {
 			const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -153,7 +158,7 @@
 				<div class="metric-label">Tiền ứng trước</div>
 			</div>
 			<div class="metric-card">
-				<div class="metric-value muted">{vnd(summary.totalCost)}<span class="metric-unit">đ</span></div>
+				<div class="metric-value muted">{vnd(getSummaryTotalCost(summary))}<span class="metric-unit">đ</span></div>
 				<div class="metric-label">Tổng chi phí</div>
 			</div>
 		</div>
