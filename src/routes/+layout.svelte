@@ -44,7 +44,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>Nhu Tin Trucker Dashboard</title>
+	<title>Pathfinder Trucker Dashboard</title>
 </svelte:head>
 
 {#if auth.status === "loading"}
@@ -80,7 +80,7 @@
 {:else}
 	<div class="auth-page">
 		<div class="auth-card">
-			<h1><span class="logo-accent">Nhu Tin</span> Trucker Dashboard</h1>
+			<h1><span class="logo-accent">Pathfinder</span> Trucker Dashboard</h1>
 			<p class="auth-subtitle">Đăng nhập để tiếp tục</p>
 			<div class="google-btn-wrap" bind:this={googleBtnContainer}></div>
 		</div>

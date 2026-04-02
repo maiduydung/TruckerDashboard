@@ -262,7 +262,7 @@ export function exportPDF(trips: Trip[]) {
 
 	doc.setFontSize(18);
 	doc.setTextColor(13, 91, 191);
-	doc.text('Bao cao chuyen — NhuTin', 14, 18);
+	doc.text('Bao cao chuyen — Pathfinder', 14, 18);
 
 	doc.setFontSize(9);
 	doc.setTextColor(107, 114, 128);

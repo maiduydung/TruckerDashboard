@@ -15,7 +15,7 @@
 - **Access denied page**: Unauthorized emails see a denial message with option to switch accounts
 - **User bar**: Shows logged-in user avatar, email, and logout button at the top of the dashboard
 - **Session persistence**: Auth state stored in `sessionStorage` (clears on tab close)
-- **Renamed title**: "NhuTin Dashboard" → "Nhu Tin Trucker Dashboard"
+- **Renamed title**: "Pathfinder Dashboard" → "Pathfinder Trucker Dashboard"
 
 ## v0.7.0 — 2026-04-01
 
