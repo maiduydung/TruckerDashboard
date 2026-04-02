@@ -153,7 +153,7 @@
 				<div class="metric-label">Tiền ứng trước</div>
 			</div>
 			<div class="metric-card">
-				<div class="metric-value muted">{vnd(summary.totalFuel + summary.totalLoading)}<span class="metric-unit">đ</span></div>
+				<div class="metric-value muted">{vnd(summary.totalCost)}<span class="metric-unit">đ</span></div>
 				<div class="metric-label">Tổng chi phí</div>
 			</div>
 		</div>

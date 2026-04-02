@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.1 — 2026-04-02
+
+### Fix total cost calculation
+
+- **Tổng chi phí card**: Now uses `totalCost` from the summary API (sum of all `total_cost`) instead of only `totalFuel + totalLoading`, which was missing additional costs (xe xúc, lò hơi, cơm, etc.)
+
 ## v0.8.0 — 2026-04-02
 
 ### Google OAuth login

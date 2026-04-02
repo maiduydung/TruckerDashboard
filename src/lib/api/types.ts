@@ -65,6 +65,7 @@ export interface DashboardSummary {
 	totalAdvance: number;
 	totalFuel: number;
 	totalLoading: number;
+	totalCost: number;
 	totalPickupKg: number;
 	totalDeliveryKg: number;
 }
