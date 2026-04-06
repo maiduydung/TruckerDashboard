@@ -16,6 +16,8 @@
 	let error = $state('');
 
 	let filters: Filters = $state({ driver: '', status: '', days: 7 });
+	let pickupFilter = $state('');
+	let deliveryFilter = $state('');
 
 	function getSummaryTotalCost(summaryValue: DashboardSummary): number {
 		const summaryAny = summaryValue as unknown as { totalCost?: number; total_cost?: number };
@@ -77,7 +79,28 @@
 		return rows;
 	}
 
-	let displayRows: DisplayRow[] = $derived(expandTrips(trips));
+	let allDisplayRows: DisplayRow[] = $derived(expandTrips(trips));
+
+	let pickupLocations: string[] = $derived(
+		[...new Set(allDisplayRows.map(r => r.pickupLocation).filter(Boolean))].sort()
+	);
+	let deliveryLocations: string[] = $derived(
+		[...new Set(allDisplayRows.map(r => r.deliveryLocation).filter(Boolean))].sort()
+	);
+
+	let displayRows: DisplayRow[] = $derived.by(() => {
+		if (!pickupFilter && !deliveryFilter) return allDisplayRows;
+
+		const matchingTripIds = new Set<string>();
+		for (const row of allDisplayRows) {
+			const pickupMatch = !pickupFilter || row.pickupLocation === pickupFilter;
+			const deliveryMatch = !deliveryFilter || row.deliveryLocation === deliveryFilter;
+			if (pickupMatch && deliveryMatch) {
+				matchingTripIds.add(row.tripId);
+			}
+		}
+		return allDisplayRows.filter(r => matchingTripIds.has(r.tripId));
+	});
 
 	async function loadData() {
 		loading = true;
@@ -124,6 +147,18 @@
 				<option value="">Tất cả tài xế</option>
 				{#each drivers as d}
 					<option value={d}>{d}</option>
+				{/each}
+			</select>
+			<select bind:value={pickupFilter}>
+				<option value="">Tất cả nơi lấy</option>
+				{#each pickupLocations as loc}
+					<option value={loc}>{loc}</option>
+				{/each}
+			</select>
+			<select bind:value={deliveryFilter}>
+				<option value="">Tất cả nơi giao</option>
+				{#each deliveryLocations as loc}
+					<option value={loc}>{loc}</option>
 				{/each}
 			</select>
 			<select bind:value={filters.status} onchange={handleFilterChange}>
