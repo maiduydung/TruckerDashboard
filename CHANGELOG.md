@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.0 — 2026-04-06
+
+### Pickup & delivery location filters
+
+- **New filter dropdowns**: "Tất cả nơi lấy" and "Tất cả nơi giao" in the header bar
+- Locations are dynamically populated from loaded trip data
+- Client-side filtering — selecting a location shows only trips with matching stops
+- Multi-stop trip grouping preserved (if any stop matches, all rows for that trip display)
+
+### Low-balance alert banner
+
+- **Alert banner**: Amber notification at top of dashboard when any trucker's closing balance < 500,000 VND
+- Lists affected drivers with their current balance
+- **Inline warning badge**: `!` indicator on the "Dư cuối" column for low-balance rows
+- Color-coded: amber for low (0–500k), red for negative balances
+
+### Shipment contract tracking spec
+
+- Added `docs/FEATURE-SHIPMENT-CONTRACTS.md` — detailed design for contract fulfillment tracking (pending client review)
+
 ## v0.8.1 — 2026-04-02
 
 ### Fix total cost calculation
