@@ -8,6 +8,7 @@
 	import WeightChart from '$lib/charts/WeightChart.svelte';
 	import Timeline from '$lib/charts/Timeline.svelte';
 	import CostCategories from '$lib/charts/CostCategories.svelte';
+	import ContractTab from '$lib/contracts/ContractTab.svelte';
 
 	let drivers: string[] = $state([]);
 	let summary: DashboardSummary | null = $state(null);
@@ -15,6 +16,7 @@
 	let loading = $state(true);
 	let error = $state('');
 
+	let activeTab = $state<'dashboard' | 'contracts'>('dashboard');
 	let filters: Filters = $state({ driver: '', status: '', days: 7 });
 	let pickupFilter = $state('');
 	let deliveryFilter = $state('');
@@ -160,6 +162,7 @@
 		<div class="header-left">
 			<h1><span class="logo-accent">Pathfinder</span> Trucker Dashboard</h1>
 		</div>
+		{#if activeTab === 'dashboard'}
 		<div class="filters">
 			<select bind:value={filters.driver} onchange={handleFilterChange}>
 				<option value="">Tất cả tài xế</option>
@@ -192,7 +195,21 @@
 				<option value={90}>90 ngày</option>
 			</select>
 		</div>
+		{/if}
 	</div>
+
+	<nav class="tab-nav">
+		<button class="tab-item" class:active={activeTab === 'dashboard'}
+			onclick={() => activeTab = 'dashboard'}>Tổng quan</button>
+		<button class="tab-item" class:active={activeTab === 'contracts'}
+			onclick={() => activeTab = 'contracts'}>Hợp đồng</button>
+	</nav>
+
+	{#if activeTab === 'contracts'}
+		<ContractTab />
+	{/if}
+
+	{#if activeTab === 'dashboard'}
 
 	{#if error}
 		<div class="error">{error}</div>
@@ -357,9 +374,31 @@
 	{:else}
 		<div class="empty">Không có dữ liệu cho bộ lọc này.</div>
 	{/if}
+
+	{/if}
 </div>
 
 <style>
+	/* ── Tab navigation ──────────────────────────────── */
+	.tab-nav {
+		display: flex; gap: 0; margin-bottom: 24px;
+		border-bottom: 1px solid var(--border);
+	}
+	.tab-item {
+		padding: 10px 24px; border: none; background: none;
+		font-size: 14px; font-weight: 600; font-family: inherit;
+		color: var(--text-muted); cursor: pointer;
+		position: relative; transition: color 0.15s;
+	}
+	.tab-item::after {
+		content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+		height: 2px; background: transparent; border-radius: 2px 2px 0 0;
+		transition: background 0.15s;
+	}
+	.tab-item.active { color: var(--blue); }
+	.tab-item.active::after { background: var(--blue); }
+	.tab-item:hover:not(.active) { color: var(--text-secondary); }
+
 	.text-muted { color: #d1d5db; }
 
 	.route-cell { white-space: nowrap; }

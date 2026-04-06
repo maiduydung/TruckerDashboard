@@ -75,3 +75,33 @@ export interface Filters {
 	status: string;
 	days: number;
 }
+
+export interface Contract {
+	id: string;
+	name: string;
+	subject: string;
+	targetWeightKg: number;
+	deliveredWeightKg: number;
+	pricePerKg: number;
+	startDate: string;
+	endDate: string;
+	status: string;
+	completionPct: number;
+	remainingKg: number;
+	contractValueVnd: number;
+	daysLeft: number;
+	alerting: boolean;
+	notes: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ContractForm {
+	name: string;
+	subject: string;
+	targetWeightKg: number;
+	pricePerKg: number;
+	startDate: string;
+	endDate: string;
+	notes: string;
+}

@@ -1,6 +1,6 @@
 # Feature: Shipment Contract Tracking
 
-**Priority**: High | **Status**: Planning | **Impact**: Must-have
+**Priority**: High | **Status**: Implemented (v1.0.0 Dashboard / v0.7.0 Backend) | **Impact**: Must-have
 
 ## Problem
 

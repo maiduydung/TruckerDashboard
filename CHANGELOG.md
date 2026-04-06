@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.0 — 2026-04-06
+
+### Shipment contract tracking (Hợp đồng tab)
+
+- **New "Hợp đồng" tab**: Underline-style tab navigation between "Tổng quan" (existing dashboard) and "Hợp đồng" (contracts)
+- **Contract CRUD**: Create, edit, and delete shipment contracts with: tên hợp đồng, đối tượng hợp đồng, khối lượng cần giao (kg), đơn giá (1000đ/kg), thời hạn (start/end date), ghi chú
+- **Auto-matching**: Contracts auto-match trips where any stop (pickup OR delivery) location matches the contract subject, within the contract date range. Only delivery weights are counted toward fulfillment.
+- **Progress cards**: Full-width cards with colored left border (blue/amber/red/green), gradient progress bars, large percentage display, and horizontal stats row (còn lại, giá trị HĐ, đơn giá, thời gian)
+- **Contract alerts**: Purple banner at top of contracts tab when any contract reaches ≥90% completion
+- **Vietnamese diacritics**: All UI labels use proper tiếng Việt có dấu
+
+### Technical details
+
+- New component: `src/lib/contracts/ContractTab.svelte` — extracted to keep +page.svelte manageable
+- New types: `Contract`, `ContractForm` interfaces in `types.ts`
+- New API functions: `fetchContracts()`, `createContract()`, `updateContract()`, `deleteContract()` in `client.ts`
+- Tab state managed via `$state<'dashboard' | 'contracts'>` — filters hidden when on contracts tab
+
 ## v0.9.0 — 2026-04-06
 
 ### Pickup & delivery location filters

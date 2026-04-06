@@ -1,4 +1,4 @@
-import type { DashboardSummary, Filters, Trip } from './types';
+import type { DashboardSummary, Filters, Trip, Contract, ContractForm } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://nhutin-trucker-api.azurewebsites.net/api';
 
@@ -30,4 +30,35 @@ export async function fetchDrivers(): Promise<string[]> {
 	if (!res.ok) throw new Error(`API error: ${res.status}`);
 	const data = await res.json();
 	return data.drivers;
+}
+
+export async function fetchContracts(): Promise<Contract[]> {
+	const res = await fetch(`${API_BASE}/contracts`);
+	if (!res.ok) throw new Error(`API error: ${res.status}`);
+	const data = await res.json();
+	return data.contracts;
+}
+
+export async function createContract(form: ContractForm): Promise<{ contractId: string }> {
+	const res = await fetch(`${API_BASE}/contracts`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(form),
+	});
+	if (!res.ok) throw new Error(`API error: ${res.status}`);
+	return res.json();
+}
+
+export async function updateContract(id: string, form: ContractForm): Promise<void> {
+	const res = await fetch(`${API_BASE}/contracts/${id}`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(form),
+	});
+	if (!res.ok) throw new Error(`API error: ${res.status}`);
+}
+
+export async function deleteContract(id: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/contracts/${id}`, { method: 'DELETE' });
+	if (!res.ok) throw new Error(`API error: ${res.status}`);
 }
