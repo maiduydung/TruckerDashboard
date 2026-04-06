@@ -102,6 +102,24 @@
 		return allDisplayRows.filter(r => matchingTripIds.has(r.tripId));
 	});
 
+	interface LowBalanceDriver { name: string; balance: number }
+	let lowBalanceDrivers: LowBalanceDriver[] = $derived.by(() => {
+		const latest = new Map<string, number>();
+		for (const row of allDisplayRows) {
+			if (row.isFirstRow) {
+				const existing = latest.get(row.driverName);
+				if (existing === undefined || row.closingBalance < existing) {
+					latest.set(row.driverName, row.closingBalance);
+				}
+			}
+		}
+		const result: LowBalanceDriver[] = [];
+		for (const [name, balance] of latest) {
+			if (balance < 500000) result.push({ name, balance });
+		}
+		return result.sort((a, b) => a.balance - b.balance);
+	});
+
 	async function loadData() {
 		loading = true;
 		error = '';
@@ -178,6 +196,21 @@
 
 	{#if error}
 		<div class="error">{error}</div>
+	{/if}
+
+	{#if lowBalanceDrivers.length > 0}
+		<div class="alert-banner">
+			<div class="alert-icon">!</div>
+			<div class="alert-content">
+				<strong>Cần ứng thêm</strong>
+				<span class="alert-detail">
+					{#each lowBalanceDrivers as d, i}
+						{#if i > 0}<span class="alert-sep">·</span>{/if}
+						<span class="alert-driver">{d.name}</span> dư <span class="alert-amount">{vnd(d.balance)}đ</span>
+					{/each}
+				</span>
+			</div>
+		</div>
 	{/if}
 
 	{#if loading}
@@ -289,7 +322,12 @@
 							<td class="number total-col">{#if row.isFirstRow}<strong>{vnd(row.totalCost)}</strong>{/if}</td>
 							<td class="number">
 								{#if row.isFirstRow}
-									<span style="color: {row.closingBalance < 0 ? '#ef4444' : '#059669'}; font-weight: 600;">{vnd(row.closingBalance)}</span>
+									<span class="closing-balance" class:balance-low={row.closingBalance < 500000 && row.closingBalance >= 0} class:balance-negative={row.closingBalance < 0} class:balance-ok={row.closingBalance >= 500000}>
+										{vnd(row.closingBalance)}
+										{#if row.closingBalance < 500000}
+											<span class="balance-alert" title="Dư cuối dưới 500,000đ — cần ứng thêm">!</span>
+										{/if}
+									</span>
 								{/if}
 							</td>
 							<td>
@@ -395,4 +433,94 @@
 		background: #0d5bbf;
 		border-color: #0d5bbf;
 	}
+
+	/* ── Balance alert ────────────────────────────────── */
+	.closing-balance {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-weight: 600;
+	}
+
+	.balance-ok { color: #059669; }
+	.balance-low { color: #d97706; }
+	.balance-negative { color: #ef4444; }
+
+	.balance-alert {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		font-size: 11px;
+		font-weight: 800;
+		line-height: 1;
+		cursor: help;
+	}
+
+	.balance-low .balance-alert {
+		background: var(--amber-bg);
+		color: var(--amber);
+		border: 1.5px solid #fbbf24;
+	}
+
+	.balance-negative .balance-alert {
+		background: #fef2f2;
+		color: #ef4444;
+		border: 1.5px solid #fca5a5;
+	}
+
+	/* ── Top alert banner ────────────────────────────── */
+	.alert-banner {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 14px 20px;
+		margin-bottom: 20px;
+		background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+		border: 1px solid #fbbf24;
+		border-radius: 12px;
+		box-shadow: 0 1px 3px rgba(217, 119, 6, 0.1);
+	}
+
+	.alert-icon {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background: #f59e0b;
+		color: white;
+		font-size: 14px;
+		font-weight: 800;
+	}
+
+	.alert-content {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 6px;
+		font-size: 13px;
+		color: #92400e;
+	}
+
+	.alert-content strong {
+		font-weight: 700;
+		color: #78350f;
+		margin-right: 4px;
+	}
+
+	.alert-detail {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px;
+	}
+
+	.alert-driver { font-weight: 600; color: #92400e; }
+	.alert-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+	.alert-sep { color: #d97706; margin: 0 2px; }
 </style>
