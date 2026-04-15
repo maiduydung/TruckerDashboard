@@ -21,6 +21,9 @@
 	let pickupFilter = $state('');
 	let deliveryFilter = $state('');
 
+	let currentPage = $state(1);
+	let pageSize = $state(20);
+
 	function getSummaryTotalCost(summaryValue: DashboardSummary): number {
 		const summaryAny = summaryValue as unknown as { totalCost?: number; total_cost?: number };
 		return summaryAny.totalCost ?? summaryAny.total_cost ?? summaryValue.totalFuel + summaryValue.totalLoading;
@@ -107,6 +110,36 @@
 		return allDisplayRows.filter(r => matchingTripIds.has(r.tripId));
 	});
 
+	let uniqueTripIds: string[] = $derived.by(() => {
+		const seen = new Set<string>();
+		const ids: string[] = [];
+		for (const r of displayRows) {
+			if (!seen.has(r.tripId)) { seen.add(r.tripId); ids.push(r.tripId); }
+		}
+		return ids;
+	});
+	let totalTrips: number = $derived(uniqueTripIds.length);
+	let totalPages: number = $derived(Math.max(1, Math.ceil(totalTrips / pageSize)));
+
+	$effect(() => {
+		if (currentPage > totalPages) currentPage = totalPages;
+		if (currentPage < 1) currentPage = 1;
+	});
+
+	let pagedRows: DisplayRow[] = $derived.by(() => {
+		const start = (currentPage - 1) * pageSize;
+		const pageTripIds = new Set(uniqueTripIds.slice(start, start + pageSize));
+		return displayRows.filter(r => pageTripIds.has(r.tripId));
+	});
+
+	let pageWindow: number[] = $derived.by(() => {
+		const max = 5;
+		let start = Math.max(1, currentPage - 2);
+		const end = Math.min(totalPages, start + max - 1);
+		start = Math.max(1, end - max + 1);
+		return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+	});
+
 	interface LowBalanceDriver { name: string; balance: number }
 	let lowBalanceDrivers: LowBalanceDriver[] = $derived.by(() => {
 		const latest = new Map<string, number>();
@@ -147,7 +180,14 @@
 	});
 
 	function handleFilterChange() {
+		currentPage = 1;
 		loadData();
+	}
+
+	$effect(() => { pickupFilter; deliveryFilter; currentPage = 1; });
+
+	function goToPage(p: number) {
+		currentPage = Math.min(Math.max(1, p), totalPages);
 	}
 
 	interface CostEntry { name: string; amountVnd: number; note: string }
@@ -299,7 +339,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each displayRows as row, idx}
+					{#each pagedRows as row, idx}
 						{@const costs = row.isFirstRow ? parseAdditional(row.additionalCosts) : []}
 						{@const isGroupStart = row.isFirstRow && row.rowsInGroup > 1}
 						{@const isGroupCont = !row.isFirstRow}
@@ -375,6 +415,32 @@
 					{/each}
 				</tbody>
 			</table>
+
+			{#if totalTrips > 0}
+				<div class="pagination">
+					<div class="pagination-info">
+						Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong>–<strong>{Math.min(currentPage * pageSize, totalTrips)}</strong> / <strong>{totalTrips}</strong> chuyến
+					</div>
+					<div class="pagination-controls">
+						<label class="page-size">
+							Mỗi trang
+							<select bind:value={pageSize} onchange={() => currentPage = 1}>
+								<option value={10}>10</option>
+								<option value={20}>20</option>
+								<option value={50}>50</option>
+								<option value={100}>100</option>
+							</select>
+						</label>
+						<button class="page-btn" disabled={currentPage === 1} onclick={() => goToPage(1)}>«</button>
+						<button class="page-btn" disabled={currentPage === 1} onclick={() => goToPage(currentPage - 1)}>‹</button>
+						{#each pageWindow as p}
+							<button class="page-btn" class:active={p === currentPage} onclick={() => goToPage(p)}>{p}</button>
+						{/each}
+						<button class="page-btn" disabled={currentPage === totalPages} onclick={() => goToPage(currentPage + 1)}>›</button>
+						<button class="page-btn" disabled={currentPage === totalPages} onclick={() => goToPage(totalPages)}>»</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<div class="export-section">
@@ -415,6 +481,69 @@
 	.tab-item:hover:not(.active) { color: var(--text-secondary); }
 
 	.text-muted { color: #d1d5db; }
+
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 14px 4px 4px;
+		flex-wrap: wrap;
+	}
+	.pagination-info {
+		font-size: 13px;
+		color: var(--text-secondary);
+	}
+	.pagination-info strong { color: var(--text); font-weight: 600; }
+	.pagination-controls {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-wrap: wrap;
+	}
+	.page-size {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+		color: var(--text-secondary);
+		margin-right: 8px;
+	}
+	.page-size select {
+		padding: 4px 8px;
+		font-size: 13px;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		background: white;
+		font-family: inherit;
+	}
+	.page-btn {
+		min-width: 32px;
+		height: 32px;
+		padding: 0 10px;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		background: white;
+		font-size: 13px;
+		font-weight: 600;
+		font-family: inherit;
+		color: var(--text-secondary);
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+	.page-btn:hover:not(:disabled):not(.active) {
+		background: #f3f4f6;
+		color: var(--text);
+	}
+	.page-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.page-btn.active {
+		background: #1273FF;
+		border-color: #1273FF;
+		color: white;
+	}
 
 	.notes-cell { max-width: 220px; }
 	.notes-text {
