@@ -1,4 +1,4 @@
-import type { Trip, StopRecord } from '$lib/api/types';
+import type { Trip, StopRecord, AdditionalCost } from '$lib/api/types';
 import { vnd, formatDate, formatDateShort } from '$lib/format';
 import { saveAs } from 'file-saver';
 import XLSX from 'xlsx-js-style';
@@ -12,6 +12,45 @@ function parseStops(raw: StopRecord[] | string): StopRecord[] {
 	} catch { return []; }
 }
 
+function parseAdditional(raw: string | AdditionalCost[] | undefined): AdditionalCost[] {
+	try {
+		const items = typeof raw === 'string' ? JSON.parse(raw) : raw;
+		return Array.isArray(items) ? items.filter(c => c.name && c.amountVnd > 0) : [];
+	} catch { return []; }
+}
+
+function formatAdditionalCosts(raw: string | AdditionalCost[] | undefined): string {
+	return parseAdditional(raw).map(c => `${c.name}: ${c.amountVnd.toLocaleString('vi-VN')}đ`).join('; ');
+}
+
+export const ADDITIONAL_CATEGORIES: { key: string; label: string; aliases: string[] }[] = [
+	{ key: 'xeXuc', label: 'Xe xúc', aliases: ['xe xúc', 'xe xuc'] },
+	{ key: 'loHoi', label: 'Lò hơi', aliases: ['lò hơi', 'lo hoi'] },
+	{ key: 'canXe', label: 'Cân xe', aliases: ['cân xe', 'can xe'] },
+	{ key: 'com', label: 'Cơm', aliases: ['cơm', 'com'] },
+	{ key: 'boiDuongCan', label: 'Bồi dưỡng cân', aliases: ['bồi dưỡng cân', 'boi duong can'] },
+	{ key: 'baoVe', label: 'Bảo vệ', aliases: ['bảo vệ', 'bao ve'] },
+	{ key: 'vaVo', label: 'Va vỡ', aliases: ['va vỡ', 'va vo'] },
+	{ key: 'ruaXe', label: 'Rửa xe', aliases: ['rửa xe', 'rua xe'] },
+	{ key: 'khac', label: 'Khác', aliases: ['khác', 'khac'] },
+];
+
+function normalize(s: string): string {
+	return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+}
+
+export function categorizeAdditional(raw: string | AdditionalCost[] | undefined): Record<string, number> {
+	const out: Record<string, number> = {};
+	for (const cat of ADDITIONAL_CATEGORIES) out[cat.key] = 0;
+	for (const c of parseAdditional(raw)) {
+		const n = normalize(c.name);
+		const match = ADDITIONAL_CATEGORIES.find(cat => cat.aliases.some(a => normalize(a) === n));
+		if (match) out[match.key] += c.amountVnd;
+		else out.khac += c.amountVnd;
+	}
+	return out;
+}
+
 interface ExpandedRow {
 	driver: string;
 	tripNumber: number;
@@ -19,13 +58,21 @@ interface ExpandedRow {
 	deliveryLabel: string;
 	date: string;
 	dateShort: string;
+	receivedDate: string;
+	receivedDateShort: string;
 	pickupKg: number;
 	deliveryKg: number;
 	advance: number;
+	openingBalance: number;
 	fuel: number;
+	fuelHnLiters: number;
 	loading: number;
 	additional: number;
 	totalCost: number;
+	closingBalance: number;
+	notes: string;
+	additionalBreakdown: string;
+	additionalByCategory: Record<string, number>;
 	status: string;
 	isFirstRow: boolean;
 }
@@ -67,13 +114,21 @@ function expandToRows(trips: Trip[]): ExpandedRow[] {
 				deliveryLabel: d?.location || '',
 				date: formatDate(t.submitted_at),
 				dateShort: formatDateShort(t.submitted_at),
+				receivedDate: t.received_at ? formatDate(t.received_at) : '',
+				receivedDateShort: t.received_at ? formatDateShort(t.received_at) : '',
 				pickupKg: p?.weightKg || 0,
 				deliveryKg: d?.weightKg || 0,
 				advance: t.advance_payment,
+				openingBalance: t.opening_balance,
 				fuel: t.fuel_nam_phat_vnd,
+				fuelHnLiters: t.fuel_hn_liters || 0,
 				loading: t.loading_fee_vnd,
 				additional: t.additionalTotal,
 				totalCost: t.totalCost,
+				closingBalance: t.closing_balance,
+				notes: t.notes || '',
+				additionalBreakdown: formatAdditionalCosts(t.additional_costs),
+				additionalByCategory: categorizeAdditional(t.additional_costs),
 				status: t.is_draft ? 'Nháp' : 'Xong',
 				isFirstRow: i === 0,
 			});
@@ -86,25 +141,37 @@ function timestamp(): string {
 	return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 }
 
+function csvEscape(v: string | number): string {
+	const s = String(v ?? '');
+	return `"${s.replace(/"/g, '""')}"`;
+}
+
 export function exportCSV(trips: Trip[]) {
 	const rows = expandToRows(trips);
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dầu NP', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Trạng thái'];
+	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 	const lines = [
 		headers.join(','),
 		...rows.map(r => [
-			`"${r.driver}"`,
+			csvEscape(r.driver),
 			r.tripNumber,
-			`"${r.pickupLabel}"`,
-			`"${r.deliveryLabel}"`,
-			`"${r.isFirstRow ? r.date : ''}"`,
+			csvEscape(r.pickupLabel),
+			csvEscape(r.deliveryLabel),
+			csvEscape(r.isFirstRow ? r.date : ''),
+			csvEscape(r.isFirstRow ? r.receivedDate : ''),
 			r.pickupKg || '',
 			r.deliveryKg || '',
 			r.isFirstRow ? r.advance : '',
+			r.isFirstRow ? r.openingBalance : '',
 			r.isFirstRow ? r.fuel : '',
+			r.isFirstRow ? (r.fuelHnLiters || '') : '',
 			r.isFirstRow ? r.loading : '',
+			...ADDITIONAL_CATEGORIES.map(c => r.isFirstRow ? (r.additionalByCategory[c.key] || '') : ''),
 			r.isFirstRow ? r.additional : '',
 			r.isFirstRow ? r.totalCost : '',
-			`"${r.isFirstRow ? r.status : ''}"`,
+			r.isFirstRow ? r.closingBalance : '',
+			csvEscape(r.isFirstRow ? r.notes : ''),
+			csvEscape(r.isFirstRow ? r.status : ''),
 		].join(',')),
 	];
 	const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -113,7 +180,8 @@ export function exportCSV(trips: Trip[]) {
 
 export function exportExcel(trips: Trip[]) {
 	const rows = expandToRows(trips);
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dầu NP', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Trạng thái'];
+	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 
 	const data: (string | number)[][] = [
 		headers,
@@ -123,13 +191,19 @@ export function exportExcel(trips: Trip[]) {
 			r.pickupLabel,
 			r.deliveryLabel,
 			r.isFirstRow ? r.date : '',
+			r.isFirstRow ? r.receivedDate : '',
 			r.pickupKg || '',
 			r.deliveryKg || '',
 			r.isFirstRow ? r.advance : '',
+			r.isFirstRow ? r.openingBalance : '',
 			r.isFirstRow ? r.fuel : '',
+			r.isFirstRow ? (r.fuelHnLiters || '') : '',
 			r.isFirstRow ? r.loading : '',
+			...ADDITIONAL_CATEGORIES.map(c => r.isFirstRow ? (r.additionalByCategory[c.key] || '') : ''),
 			r.isFirstRow ? r.additional : '',
 			r.isFirstRow ? r.totalCost : '',
+			r.isFirstRow ? r.closingBalance : '',
+			r.isFirstRow ? r.notes : '',
 			r.isFirstRow ? r.status : '',
 		]),
 	];
@@ -143,13 +217,19 @@ export function exportExcel(trips: Trip[]) {
 		{ wch: 20 },  // Nơi lấy
 		{ wch: 20 },  // Nơi giao
 		{ wch: 14 },  // Ngày gửi
+		{ wch: 14 },  // Ngày nhận
 		{ wch: 10 },  // KG lấy
 		{ wch: 10 },  // KG giao
 		{ wch: 14 },  // Tiền ứng
+		{ wch: 14 },  // Dư đầu
 		{ wch: 14 },  // Dầu NP
+		{ wch: 12 },  // Dầu HN (L)
 		{ wch: 14 },  // Bốc xếp
+		...ADDITIONAL_CATEGORIES.map(() => ({ wch: 12 })),
 		{ wch: 14 },  // Phát sinh
 		{ wch: 14 },  // Tổng CP
+		{ wch: 14 },  // Dư cuối
+		{ wch: 26 },  // Ghi chú
 		{ wch: 10 },  // Trạng thái
 	];
 
@@ -173,9 +253,18 @@ export function exportExcel(trips: Trip[]) {
 	};
 
 	const numFmt = '#,##0';
-	const vndCols = new Set([7, 8, 9, 10, 11]); // Tiền ứng, Dầu NP, Bốc xếp, Phát sinh, Tổng CP
-	const kgCols = new Set([5, 6]); // KG lấy, KG giao
-	const centerCols = new Set([1, 4, 12]); // Chuyến, Ngày gửi, Trạng thái
+	const catStart = 13;
+	const catEnd = catStart + ADDITIONAL_CATEGORIES.length - 1;
+	const phatSinhCol = catEnd + 1;
+	const totalCol = phatSinhCol + 1;
+	const duCuoiCol = totalCol + 1;
+	const ghiChuCol = duCuoiCol + 1;
+	const statusCol = ghiChuCol + 1;
+	const vndCols = new Set<number>([8, 9, 10, 12, phatSinhCol, totalCol, duCuoiCol]);
+	for (let i = catStart; i <= catEnd; i++) vndCols.add(i);
+	const kgCols = new Set([6, 7]);
+	const litersCols = new Set([11]);
+	const centerCols = new Set([1, 4, 5, statusCol]);
 
 	const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
 	for (let r = range.s.r; r <= range.e.r; r++) {
@@ -200,7 +289,7 @@ export function exportExcel(trips: Trip[]) {
 					cellStyle.fill = { fgColor: { rgb: 'F3F4F6' } };
 				}
 
-				if (vndCols.has(c) || kgCols.has(c)) {
+				if (vndCols.has(c) || kgCols.has(c) || litersCols.has(c)) {
 					cellStyle.numFmt = numFmt;
 					cellStyle.alignment.horizontal = 'right';
 				}
@@ -209,11 +298,11 @@ export function exportExcel(trips: Trip[]) {
 					cellStyle.alignment.horizontal = 'center';
 				}
 
-				if (c === 11 && row?.isFirstRow) {
+				if (c === totalCol && row?.isFirstRow) {
 					cellStyle.font = { bold: true, color: { rgb: '0D5BBF' } };
 				}
 
-				if (c === 12 && row?.isFirstRow) {
+				if (c === statusCol && row?.isFirstRow) {
 					const val = ws[addr].v;
 					if (val === 'Xong') {
 						cellStyle.font = { bold: true, color: { rgb: '155724' } };
@@ -238,21 +327,32 @@ export function exportExcel(trips: Trip[]) {
 
 export function exportJSON(trips: Trip[]) {
 	const rows = expandToRows(trips);
-	const jsonRows = rows.map(r => ({
-		'Tài xế': r.driver,
-		'Chuyến': r.tripNumber,
-		'Nơi lấy': r.pickupLabel,
-		'Nơi giao': r.deliveryLabel,
-		'Ngày gửi': r.isFirstRow ? r.date : '',
-		'KG lấy': r.pickupKg,
-		'KG giao': r.deliveryKg,
-		'Tiền ứng': r.isFirstRow ? r.advance : '',
-		'Dầu NP': r.isFirstRow ? r.fuel : '',
-		'Bốc xếp': r.isFirstRow ? r.loading : '',
-		'Phát sinh': r.isFirstRow ? r.additional : '',
-		'Tổng CP': r.isFirstRow ? r.totalCost : '',
-		'Trạng thái': r.isFirstRow ? r.status : '',
-	}));
+	const jsonRows = rows.map(r => {
+		const base: Record<string, string | number> = {
+			'Tài xế': r.driver,
+			'Chuyến': r.tripNumber,
+			'Nơi lấy': r.pickupLabel,
+			'Nơi giao': r.deliveryLabel,
+			'Ngày gửi': r.isFirstRow ? r.date : '',
+			'Ngày nhận': r.isFirstRow ? r.receivedDate : '',
+			'KG lấy': r.pickupKg,
+			'KG giao': r.deliveryKg,
+			'Tiền ứng': r.isFirstRow ? r.advance : '',
+			'Dư đầu': r.isFirstRow ? r.openingBalance : '',
+			'Dầu NP': r.isFirstRow ? r.fuel : '',
+			'Dầu HN (L)': r.isFirstRow ? r.fuelHnLiters : '',
+			'Bốc xếp': r.isFirstRow ? r.loading : '',
+		};
+		for (const c of ADDITIONAL_CATEGORIES) {
+			base[c.label] = r.isFirstRow ? (r.additionalByCategory[c.key] || 0) : '';
+		}
+		base['Phát sinh'] = r.isFirstRow ? r.additional : '';
+		base['Tổng CP'] = r.isFirstRow ? r.totalCost : '';
+		base['Dư cuối'] = r.isFirstRow ? r.closingBalance : '';
+		base['Ghi chú'] = r.isFirstRow ? r.notes : '';
+		base['Trạng thái'] = r.isFirstRow ? r.status : '';
+		return base;
+	});
 	const blob = new Blob([JSON.stringify(jsonRows, null, 2)], { type: 'application/json' });
 	saveAs(blob, `chuyen_${timestamp()}.json`);
 }
@@ -272,7 +372,8 @@ export function exportPDF(trips: Trip[]) {
 	doc.setLineWidth(0.5);
 	doc.line(14, 28, 283, 28);
 
-	const headers = ['Tai xe', 'Chuyen', 'Noi lay', 'Noi giao', 'Ngay', 'KG lay', 'KG giao', 'Tien ung', 'Dau NP', 'Boc xep', 'Phat sinh', 'Tong CP', 'TT'];
+	const catHeadersPdf = ['Xe xuc', 'Lo hoi', 'Can xe', 'Com', 'BD can', 'Bao ve', 'Va vo', 'Rua xe', 'Khac'];
+	const headers = ['Tai xe', 'Chuyen', 'Noi lay', 'Noi giao', 'Ngay gui', 'Ngay nhan', 'KG lay', 'KG giao', 'Tien ung', 'Du dau', 'Dau NP', 'Dau HN (L)', 'Boc xep', ...catHeadersPdf, 'Phat sinh', 'Tong CP', 'Du cuoi', 'Ghi chu', 'TT'];
 	const rows = expandToRows(trips);
 	const body = rows.map(r => [
 		r.driver,
@@ -280,13 +381,19 @@ export function exportPDF(trips: Trip[]) {
 		r.pickupLabel,
 		r.deliveryLabel,
 		r.isFirstRow ? r.dateShort : '',
+		r.isFirstRow ? r.receivedDateShort : '',
 		r.pickupKg ? r.pickupKg.toLocaleString() : '',
 		r.deliveryKg ? r.deliveryKg.toLocaleString() : '',
 		r.isFirstRow ? vnd(r.advance) : '',
+		r.isFirstRow ? vnd(r.openingBalance) : '',
 		r.isFirstRow ? vnd(r.fuel) : '',
+		r.isFirstRow && r.fuelHnLiters ? r.fuelHnLiters.toLocaleString() : '',
 		r.isFirstRow ? vnd(r.loading) : '',
+		...ADDITIONAL_CATEGORIES.map(c => r.isFirstRow && r.additionalByCategory[c.key] ? vnd(r.additionalByCategory[c.key]) : ''),
 		r.isFirstRow ? vnd(r.additional) : '',
 		r.isFirstRow ? vnd(r.totalCost) : '',
+		r.isFirstRow ? vnd(r.closingBalance) : '',
+		r.isFirstRow ? r.notes : '',
 		r.isFirstRow ? (r.status === 'Nháp' ? 'Nhap' : 'Xong') : '',
 	]);
 

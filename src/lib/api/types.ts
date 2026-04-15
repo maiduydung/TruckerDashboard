@@ -28,6 +28,7 @@ export interface Trip {
 	notes: string;
 	is_draft: boolean;
 	submitted_at: string;
+	received_at: string;
 }
 
 export interface DisplayRow {
@@ -35,6 +36,7 @@ export interface DisplayRow {
 	driverName: string;
 	tripNumber: number;
 	submittedAt: string;
+	receivedAt: string;
 	isDraft: boolean;
 	pickupLocation: string;
 	pickupWeightKg: number;
@@ -43,7 +45,9 @@ export interface DisplayRow {
 	advancePayment: number;
 	openingBalance: number;
 	fuelNamPhatVnd: number;
+	fuelHnLiters: number;
 	loadingFeeVnd: number;
+	notes: string;
 	additionalCosts: string | AdditionalCost[];
 	additionalTotal: number;
 	totalCost: number;

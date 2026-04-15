@@ -60,6 +60,7 @@
 					driverName: t.driver_name,
 					tripNumber: tripNumberMap.get(t.id) || 1,
 					submittedAt: t.submitted_at,
+					receivedAt: t.received_at,
 					isDraft: t.is_draft,
 					pickupLocation: pickups[i]?.location || '',
 					pickupWeightKg: pickups[i]?.weightKg || 0,
@@ -68,7 +69,9 @@
 					advancePayment: t.advance_payment,
 					openingBalance: t.opening_balance,
 					fuelNamPhatVnd: t.fuel_nam_phat_vnd,
+					fuelHnLiters: t.fuel_hn_liters,
 					loadingFeeVnd: t.loading_fee_vnd,
+					notes: t.notes || '',
 					additionalCosts: t.additional_costs,
 					additionalTotal: t.additionalTotal,
 					totalCost: t.totalCost,
@@ -279,16 +282,19 @@
 						<th>Chuyến</th>
 						<th>Nơi lấy</th>
 						<th>Nơi giao</th>
-						<th>Ngày</th>
+						<th>Ngày gửi</th>
+						<th>Ngày nhận</th>
 						<th>KG lấy</th>
 						<th>KG giao</th>
 						<th>Tiền ứng</th>
 						<th>Dư đầu</th>
 						<th>Dầu NP</th>
+						<th>Dầu HN (L)</th>
 						<th>Bốc xếp</th>
 						<th>Phát sinh</th>
 						<th>Tổng CP</th>
 						<th>Dư cuối</th>
+						<th>Ghi chú</th>
 						<th>Trạng thái</th>
 					</tr>
 				</thead>
@@ -317,11 +323,13 @@
 								{/if}
 							</td>
 							<td>{row.isFirstRow ? formatDate(row.submittedAt) : ''}</td>
+							<td>{row.isFirstRow ? formatDate(row.receivedAt) : ''}</td>
 							<td class="number">{row.pickupWeightKg ? row.pickupWeightKg.toLocaleString() : ''}</td>
 							<td class="number">{row.deliveryWeightKg ? row.deliveryWeightKg.toLocaleString() : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.advancePayment) : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.openingBalance) : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.fuelNamPhatVnd) : ''}</td>
+							<td class="number">{row.isFirstRow && row.fuelHnLiters ? row.fuelHnLiters.toLocaleString() : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.loadingFeeVnd) : ''}</td>
 							<td class="number">
 								{#if row.isFirstRow}
@@ -345,6 +353,13 @@
 											<span class="balance-alert" title="Dư cuối dưới 500,000đ — cần ứng thêm">!</span>
 										{/if}
 									</span>
+								{/if}
+							</td>
+							<td class="notes-cell">
+								{#if row.isFirstRow && row.notes}
+									<span class="notes-text" title={row.notes}>{row.notes}</span>
+								{:else if row.isFirstRow}
+									<span class="text-muted">—</span>
 								{/if}
 							</td>
 							<td>
@@ -400,6 +415,19 @@
 	.tab-item:hover:not(.active) { color: var(--text-secondary); }
 
 	.text-muted { color: #d1d5db; }
+
+	.notes-cell { max-width: 220px; }
+	.notes-text {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 12px;
+		color: var(--text-secondary);
+		white-space: normal;
+	}
 
 	.route-cell { white-space: nowrap; }
 
