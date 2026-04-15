@@ -236,7 +236,25 @@
 				<option value={14}>14 ngày</option>
 				<option value={30}>30 ngày</option>
 				<option value={90}>90 ngày</option>
+				{#if filters.days > 0 && ![7, 14, 30, 90].includes(filters.days)}
+					<option value={filters.days}>{filters.days} ngày</option>
+				{/if}
 			</select>
+			<input
+				type="number"
+				class="days-input"
+				min="1"
+				step="1"
+				placeholder="Tuỳ chỉnh ngày"
+				value={filters.days > 0 && ![7, 14, 30, 90].includes(filters.days) ? filters.days : ''}
+				onchange={(e) => {
+					const v = parseInt((e.currentTarget as HTMLInputElement).value, 10);
+					if (Number.isFinite(v) && v >= 1) {
+						filters.days = v;
+						handleFilterChange();
+					}
+				}}
+			/>
 		</div>
 		{/if}
 	</div>
@@ -481,6 +499,22 @@
 	.tab-item:hover:not(.active) { color: var(--text-secondary); }
 
 	.text-muted { color: #d1d5db; }
+
+	.days-input {
+		width: 120px;
+		padding: 6px 10px;
+		font-size: 13px;
+		font-family: inherit;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		background: white;
+	}
+	.days-input:focus {
+		outline: none;
+		border-color: #1273FF;
+	}
+	.days-input::-webkit-outer-spin-button,
+	.days-input::-webkit-inner-spin-button { opacity: 1; }
 
 	.pagination {
 		display: flex;
