@@ -167,11 +167,12 @@ function csvEscape(v: string | number): string {
 	return `"${s.replace(/"/g, '""')}"`;
 }
 
-export function exportCSV(trips: Trip[]) {
+export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
 	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 	const lines = [
+		...(rangeLabel ? [csvEscape(`Khoảng thời gian: ${rangeLabel}`), ''] : []),
 		headers.join(','),
 		...rows.map(r => [
 			csvEscape(r.driver),
@@ -199,12 +200,17 @@ export function exportCSV(trips: Trip[]) {
 	saveAs(blob, `chuyen_${timestamp()}.csv`);
 }
 
-export function exportExcel(trips: Trip[]) {
+export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
 	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 
+	const titleRows: (string | number)[][] = rangeLabel
+		? [[`Khoảng thời gian: ${rangeLabel}`], []]
+		: [];
+	const headerRowIdx = titleRows.length;
 	const data: (string | number)[][] = [
+		...titleRows,
 		headers,
 		...rows.map(r => [
 			r.driver,
@@ -293,10 +299,20 @@ export function exportExcel(trips: Trip[]) {
 			const addr = XLSX.utils.encode_cell({ r, c });
 			if (!ws[addr]) continue;
 
-			if (r === 0) {
+			if (r < headerRowIdx) {
+				if (r === 0 && c === 0) {
+					ws[addr].s = {
+						font: { bold: true, sz: 11, color: { rgb: '334155' } },
+						alignment: { vertical: 'center' as const },
+					};
+				}
+				continue;
+			}
+
+			if (r === headerRowIdx) {
 				ws[addr].s = headerStyle;
 			} else {
-				const row = rows[r - 1];
+				const row = rows[r - headerRowIdx - 1];
 				const isGroupCont = row && !row.isFirstRow;
 				const cellStyle: any = {
 					border: borderThin,
@@ -339,6 +355,11 @@ export function exportExcel(trips: Trip[]) {
 		}
 	}
 
+	if (headerRowIdx > 0) {
+		const lastCol = headers.length - 1;
+		ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } }];
+	}
+
 	ws['!rows'] = [{ hpt: 28 }];
 
 	XLSX.utils.book_append_sheet(wb, ws, 'Chuyến');
@@ -346,7 +367,7 @@ export function exportExcel(trips: Trip[]) {
 	saveAs(new Blob([buf], { type: 'application/octet-stream' }), `chuyen_${timestamp()}.xlsx`);
 }
 
-export function exportJSON(trips: Trip[]) {
+export function exportJSON(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const jsonRows = rows.map(r => {
 		const base: Record<string, string | number> = {
@@ -374,11 +395,14 @@ export function exportJSON(trips: Trip[]) {
 		base['Trạng thái'] = r.isFirstRow ? r.status : '';
 		return base;
 	});
-	const blob = new Blob([JSON.stringify(jsonRows, null, 2)], { type: 'application/json' });
+	const payload = rangeLabel
+		? { 'Khoảng thời gian': rangeLabel, 'Chuyến': jsonRows }
+		: jsonRows;
+	const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
 	saveAs(blob, `chuyen_${timestamp()}.json`);
 }
 
-export async function exportPDF(trips: Trip[]) {
+export async function exportPDF(trips: Trip[], rangeLabel: string = '') {
 	const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
 	const { regular, bold } = await loadPdfFonts();
@@ -397,6 +421,9 @@ export async function exportPDF(trips: Trip[]) {
 	doc.setFontSize(9);
 	doc.setTextColor(107, 114, 128);
 	doc.text(`Xuất lúc ${new Date().toLocaleString('vi-VN')}`, 14, 25);
+	if (rangeLabel) {
+		doc.text(`Khoảng thời gian: ${rangeLabel}`, 120, 25);
+	}
 
 	doc.setDrawColor(18, 115, 255);
 	doc.setLineWidth(0.5);

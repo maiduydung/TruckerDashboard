@@ -24,6 +24,21 @@
 	let currentPage = $state(1);
 	let pageSize = $state(20);
 
+	function fmtDay(d: Date): string {
+		const dd = String(d.getDate()).padStart(2, '0');
+		const mm = String(d.getMonth() + 1).padStart(2, '0');
+		const yy = d.getFullYear();
+		return `${dd}/${mm}/${yy}`;
+	}
+
+	let rangeLabel: string = $derived.by(() => {
+		const today = new Date();
+		if (!filters.days || filters.days <= 0) return `Tất cả dữ liệu · tính đến ${fmtDay(today)}`;
+		const from = new Date(today);
+		from.setDate(from.getDate() - filters.days);
+		return `Từ ${fmtDay(from)} đến ${fmtDay(today)} · ${filters.days} ngày gần nhất`;
+	});
+
 	function getSummaryTotalCost(summaryValue: DashboardSummary): number {
 		const summaryAny = summaryValue as unknown as { totalCost?: number; total_cost?: number };
 		return summaryAny.totalCost ?? summaryAny.total_cost ?? summaryValue.totalFuel + summaryValue.totalLoading;
@@ -259,6 +274,13 @@
 		{/if}
 	</div>
 
+	{#if activeTab === 'dashboard'}
+		<div class="range-caption">
+			<span class="range-icon">📅</span>
+			<span>{rangeLabel}</span>
+		</div>
+	{/if}
+
 	<nav class="tab-nav">
 		<button class="tab-item" class:active={activeTab === 'dashboard'}
 			onclick={() => activeTab = 'dashboard'}>Tổng quan</button>
@@ -464,10 +486,10 @@
 		<div class="export-section">
 			<h2>Xuất dữ liệu</h2>
 			<div class="export-bar">
-				<button class="btn" onclick={() => exportCSV(trips)}>CSV</button>
-				<button class="btn" onclick={() => exportExcel(trips)}>Excel</button>
-				<button class="btn" onclick={() => exportJSON(trips)}>JSON</button>
-				<button class="btn btn-primary" onclick={() => exportPDF(trips)}>PDF</button>
+				<button class="btn" onclick={() => exportCSV(trips, rangeLabel)}>CSV</button>
+				<button class="btn" onclick={() => exportExcel(trips, rangeLabel)}>Excel</button>
+				<button class="btn" onclick={() => exportJSON(trips, rangeLabel)}>JSON</button>
+				<button class="btn btn-primary" onclick={() => exportPDF(trips, rangeLabel)}>PDF</button>
 			</div>
 		</div>
 	{:else}
@@ -500,8 +522,23 @@
 
 	.text-muted { color: #d1d5db; }
 
+	.range-caption {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		margin: 0 0 16px;
+		background: #f3f6fb;
+		border: 1px solid #e5edf8;
+		border-radius: 999px;
+		font-size: 12px;
+		color: #334155;
+		font-weight: 500;
+	}
+	.range-icon { font-size: 13px; }
+
 	.days-input {
-		width: 120px;
+		width: 170px;
 		padding: 6px 10px;
 		font-size: 13px;
 		font-family: inherit;
