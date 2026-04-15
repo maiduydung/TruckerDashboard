@@ -388,6 +388,7 @@
 
 		<div class="table-wrap">
 			<h2>Chi tiết chuyến</h2>
+			<div class="table-scroll">
 			<table>
 				<thead>
 					<tr>
@@ -488,6 +489,7 @@
 					{/each}
 				</tbody>
 			</table>
+			</div>
 
 			{#if pickupFilter || deliveryFilter}
 				<div class="filter-totals">
