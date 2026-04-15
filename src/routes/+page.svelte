@@ -140,6 +140,21 @@
 		return { trips: tripIds.size, pickupKg, deliveryKg };
 	});
 
+	let filteredTrips: Trip[] = $derived.by(() => {
+		if (!pickupFilter && !deliveryFilter) return trips;
+		const ids = new Set(displayRows.map(r => r.tripId));
+		return trips.filter(t => ids.has(t.id));
+	});
+
+	let exportLabel: string = $derived.by(() => {
+		const parts = [rangeLabel];
+		if (pickupFilter) parts.push(`Nơi lấy: ${pickupFilter}`);
+		if (deliveryFilter) parts.push(`Nơi giao: ${deliveryFilter}`);
+		if (filters.driver) parts.push(`Tài xế: ${filters.driver}`);
+		if (filters.status) parts.push(`Trạng thái: ${filters.status === 'draft' ? 'Nháp' : 'Hoàn tất'}`);
+		return parts.join(' · ');
+	});
+
 	let uniqueTripIds: string[] = $derived.by(() => {
 		const seen = new Set<string>();
 		const ids: string[] = [];
@@ -519,10 +534,10 @@
 		<div class="export-section">
 			<h2>Xuất dữ liệu</h2>
 			<div class="export-bar">
-				<button class="btn" onclick={() => exportCSV(trips, rangeLabel)}>CSV</button>
-				<button class="btn" onclick={() => exportExcel(trips, rangeLabel)}>Excel</button>
-				<button class="btn" onclick={() => exportJSON(trips, rangeLabel)}>JSON</button>
-				<button class="btn btn-primary" onclick={() => exportPDF(trips, rangeLabel)}>PDF</button>
+				<button class="btn" onclick={() => exportCSV(filteredTrips, exportLabel)}>CSV</button>
+				<button class="btn" onclick={() => exportExcel(filteredTrips, exportLabel)}>Excel</button>
+				<button class="btn" onclick={() => exportJSON(filteredTrips, exportLabel)}>JSON</button>
+				<button class="btn btn-primary" onclick={() => exportPDF(filteredTrips, exportLabel)}>PDF</button>
 			</div>
 		</div>
 	{:else}
