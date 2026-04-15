@@ -4,6 +4,27 @@ import { saveAs } from 'file-saver';
 import XLSX from 'xlsx-js-style';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import notoSansRegularUrl from '$lib/assets/fonts/NotoSans-Regular.ttf?url';
+import notoSansBoldUrl from '$lib/assets/fonts/NotoSans-Bold.ttf?url';
+
+let _fontCache: { regular: string; bold: string } | null = null;
+async function loadPdfFonts(): Promise<{ regular: string; bold: string }> {
+	if (_fontCache) return _fontCache;
+	const toBase64 = async (url: string) => {
+		const res = await fetch(url);
+		const buf = await res.arrayBuffer();
+		const bytes = new Uint8Array(buf);
+		let bin = '';
+		const CHUNK = 0x8000;
+		for (let i = 0; i < bytes.length; i += CHUNK) {
+			bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+		}
+		return btoa(bin);
+	};
+	const [regular, bold] = await Promise.all([toBase64(notoSansRegularUrl), toBase64(notoSansBoldUrl)]);
+	_fontCache = { regular, bold };
+	return _fontCache;
+}
 
 function parseStops(raw: StopRecord[] | string): StopRecord[] {
 	try {
@@ -357,23 +378,31 @@ export function exportJSON(trips: Trip[]) {
 	saveAs(blob, `chuyen_${timestamp()}.json`);
 }
 
-export function exportPDF(trips: Trip[]) {
+export async function exportPDF(trips: Trip[]) {
 	const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
+	const { regular, bold } = await loadPdfFonts();
+	doc.addFileToVFS('NotoSans-Regular.ttf', regular);
+	doc.addFileToVFS('NotoSans-Bold.ttf', bold);
+	doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+	doc.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+	doc.setFont('NotoSans', 'normal');
+
+	doc.setFont('NotoSans', 'bold');
 	doc.setFontSize(18);
 	doc.setTextColor(13, 91, 191);
-	doc.text('Bao cao chuyen — Pathfinder', 14, 18);
+	doc.text('Báo cáo chuyến — Pathfinder', 14, 18);
 
+	doc.setFont('NotoSans', 'normal');
 	doc.setFontSize(9);
 	doc.setTextColor(107, 114, 128);
-	doc.text(`Xuat luc ${new Date().toLocaleString('vi-VN')}`, 14, 25);
+	doc.text(`Xuất lúc ${new Date().toLocaleString('vi-VN')}`, 14, 25);
 
 	doc.setDrawColor(18, 115, 255);
 	doc.setLineWidth(0.5);
 	doc.line(14, 28, 283, 28);
 
-	const catHeadersPdf = ['Xe xuc', 'Lo hoi', 'Can xe', 'Com', 'BD can', 'Bao ve', 'Va vo', 'Rua xe', 'Khac'];
-	const headers = ['Tai xe', 'Chuyen', 'Noi lay', 'Noi giao', 'Ngay gui', 'Ngay nhan', 'KG lay', 'KG giao', 'Tien ung', 'Du dau', 'Dau NP', 'Dau HN (L)', 'Boc xep', ...catHeadersPdf, 'Phat sinh', 'Tong CP', 'Du cuoi', 'Ghi chu', 'TT'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Dư cuối', 'TT'];
 	const rows = expandToRows(trips);
 	const body = rows.map(r => [
 		r.driver,
@@ -389,21 +418,35 @@ export function exportPDF(trips: Trip[]) {
 		r.isFirstRow ? vnd(r.fuel) : '',
 		r.isFirstRow && r.fuelHnLiters ? r.fuelHnLiters.toLocaleString() : '',
 		r.isFirstRow ? vnd(r.loading) : '',
-		...ADDITIONAL_CATEGORIES.map(c => r.isFirstRow && r.additionalByCategory[c.key] ? vnd(r.additionalByCategory[c.key]) : ''),
 		r.isFirstRow ? vnd(r.additional) : '',
 		r.isFirstRow ? vnd(r.totalCost) : '',
 		r.isFirstRow ? vnd(r.closingBalance) : '',
-		r.isFirstRow ? r.notes : '',
-		r.isFirstRow ? (r.status === 'Nháp' ? 'Nhap' : 'Xong') : '',
+		r.isFirstRow ? r.status : '',
 	]);
 
 	autoTable(doc, {
 		startY: 32,
 		head: [headers],
 		body,
-		styles: { fontSize: 7, cellPadding: 2 },
-		headStyles: { fillColor: [18, 115, 255], textColor: 255 },
+		styles: { fontSize: 7, cellPadding: 1.5, font: 'NotoSans', fontStyle: 'normal', overflow: 'linebreak' },
+		headStyles: { fillColor: [18, 115, 255], textColor: 255, font: 'NotoSans', fontStyle: 'bold' },
 		alternateRowStyles: { fillColor: [249, 250, 251] },
+		columnStyles: {
+			1: { halign: 'center' },
+			4: { halign: 'center' },
+			5: { halign: 'center' },
+			6: { halign: 'right' },
+			7: { halign: 'right' },
+			8: { halign: 'right' },
+			9: { halign: 'right' },
+			10: { halign: 'right' },
+			11: { halign: 'right' },
+			12: { halign: 'right' },
+			13: { halign: 'right' },
+			14: { halign: 'right', fontStyle: 'bold' },
+			15: { halign: 'right' },
+			16: { halign: 'center' },
+		},
 		didParseCell(data) {
 			if (data.section === 'body') {
 				const row = rows[data.row.index];
