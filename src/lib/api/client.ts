@@ -32,6 +32,12 @@ export async function fetchDrivers(): Promise<string[]> {
 	return data.drivers;
 }
 
+export async function fetchLocations(): Promise<{ pickups: string[]; deliveries: string[] }> {
+	const res = await fetch(`${API_BASE}/dashboard/locations`);
+	if (!res.ok) throw new Error(`API error: ${res.status}`);
+	return res.json();
+}
+
 export async function fetchContracts(): Promise<Contract[]> {
 	const res = await fetch(`${API_BASE}/contracts`);
 	if (!res.ok) throw new Error(`API error: ${res.status}`);

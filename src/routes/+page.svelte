@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fetchSummary, fetchTrips, fetchDrivers } from '$lib/api/client';
+	import { fetchSummary, fetchTrips, fetchDrivers, fetchLocations } from '$lib/api/client';
 	import type { DashboardSummary, Trip, Filters, DisplayRow, StopRecord } from '$lib/api/types';
 	import { vnd, formatDate } from '$lib/format';
 	import { exportCSV, exportExcel, exportJSON, exportPDF } from '$lib/exports/exporter';
@@ -11,6 +11,8 @@
 	import ContractTab from '$lib/contracts/ContractTab.svelte';
 
 	let drivers: string[] = $state([]);
+	let allPickups: string[] = $state([]);
+	let allDeliveries: string[] = $state([]);
 	let summary: DashboardSummary | null = $state(null);
 	let trips: Trip[] = $state([]);
 	let loading = $state(true);
@@ -105,10 +107,10 @@
 	let allDisplayRows: DisplayRow[] = $derived(expandTrips(trips));
 
 	let pickupLocations: string[] = $derived(
-		[...new Set(allDisplayRows.map(r => r.pickupLocation).filter(Boolean))].sort()
+		[...new Set([...allPickups, ...allDisplayRows.map(r => r.pickupLocation).filter(Boolean)])].sort()
 	);
 	let deliveryLocations: string[] = $derived(
-		[...new Set(allDisplayRows.map(r => r.deliveryLocation).filter(Boolean))].sort()
+		[...new Set([...allDeliveries, ...allDisplayRows.map(r => r.deliveryLocation).filter(Boolean)])].sort()
 	);
 
 	let displayRows: DisplayRow[] = $derived.by(() => {
@@ -123,6 +125,19 @@
 			}
 		}
 		return allDisplayRows.filter(r => matchingTripIds.has(r.tripId));
+	});
+
+	interface FilterTotals { trips: number; pickupKg: number; deliveryKg: number }
+	let filterTotals: FilterTotals = $derived.by(() => {
+		let pickupKg = 0;
+		let deliveryKg = 0;
+		const tripIds = new Set<string>();
+		for (const r of displayRows) {
+			tripIds.add(r.tripId);
+			if (!pickupFilter || r.pickupLocation === pickupFilter) pickupKg += r.pickupWeightKg || 0;
+			if (!deliveryFilter || r.deliveryLocation === deliveryFilter) deliveryKg += r.deliveryWeightKg || 0;
+		}
+		return { trips: tripIds.size, pickupKg, deliveryKg };
 	});
 
 	let uniqueTripIds: string[] = $derived.by(() => {
@@ -189,7 +204,10 @@
 
 	onMount(async () => {
 		try {
-			drivers = await fetchDrivers();
+			const [d, loc] = await Promise.all([fetchDrivers(), fetchLocations()]);
+			drivers = d;
+			allPickups = loc.pickups;
+			allDeliveries = loc.deliveries;
 		} catch {}
 		await loadData();
 	});
@@ -456,6 +474,21 @@
 				</tbody>
 			</table>
 
+			{#if pickupFilter || deliveryFilter}
+				<div class="filter-totals">
+					<div class="filter-totals-label">
+						Tổng cho bộ lọc
+						{#if pickupFilter}<span class="filter-chip">Nơi lấy: <strong>{pickupFilter}</strong></span>{/if}
+						{#if deliveryFilter}<span class="filter-chip">Nơi giao: <strong>{deliveryFilter}</strong></span>{/if}
+					</div>
+					<div class="filter-totals-values">
+						<div><span class="ft-label">Chuyến</span><strong>{filterTotals.trips.toLocaleString('vi-VN')}</strong></div>
+						<div><span class="ft-label">Tổng KG lấy</span><strong>{filterTotals.pickupKg.toLocaleString('vi-VN')} kg</strong></div>
+						<div><span class="ft-label">Tổng KG giao</span><strong>{filterTotals.deliveryKg.toLocaleString('vi-VN')} kg</strong></div>
+					</div>
+				</div>
+			{/if}
+
 			{#if totalTrips > 0}
 				<div class="pagination">
 					<div class="pagination-info">
@@ -552,6 +585,59 @@
 	}
 	.days-input::-webkit-outer-spin-button,
 	.days-input::-webkit-inner-spin-button { opacity: 1; }
+
+	.filter-totals {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 12px 16px;
+		margin-top: 14px;
+		background: #f3f6fb;
+		border: 1px solid #e5edf8;
+		border-radius: 10px;
+		flex-wrap: wrap;
+	}
+	.filter-totals-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 13px;
+		color: var(--text-secondary);
+		font-weight: 500;
+	}
+	.filter-chip {
+		padding: 2px 10px;
+		background: white;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		font-size: 12px;
+		color: var(--text);
+	}
+	.filter-chip strong { color: #1273FF; font-weight: 600; }
+	.filter-totals-values {
+		display: flex;
+		gap: 24px;
+		flex-wrap: wrap;
+	}
+	.filter-totals-values > div {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.ft-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		color: var(--text-muted, #94a3b8);
+		font-weight: 600;
+	}
+	.filter-totals-values strong {
+		font-size: 15px;
+		font-weight: 700;
+		color: var(--text);
+		font-variant-numeric: tabular-nums;
+	}
 
 	.pagination {
 		display: flex;
