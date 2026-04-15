@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.1.0 — 2026-04-15
+
+### Trip table: more data, more precision
+
+- **New columns**: Ngày nhận (server-receipt timestamp), Dầu HN (liters), Ghi chú (driver notes)
+- **Custom date range**: number input alongside the 7/14/30/90 preset dropdown — accepts any integer ≥ 1 day
+- **Explicit range pill**: e.g. `📅 Từ 16/03/2026 đến 15/04/2026 · 30 ngày gần nhất` so the user can see the exact window at a glance (and the same label is injected into every export)
+- **Full location list**: pickup/delivery filter dropdowns now union the backend's `/dashboard/locations` response with currently-loaded trips — locations outside the active date window show up too
+- **Filter totals**: when a pickup or delivery filter is active, a summary bar under the table shows total trips + aggregate KG lấy / KG giao for the matched set
+- **Pagination**: trips table paginates at 20 per page (10/20/50/100 selector) with trip-aware slicing so multi-stop trips stay grouped on one page
+
+### Exports: everything the mobile app records
+
+- **Per-category additional-cost columns**: exports now split phát sinh into 9 fixed columns (Xe xúc, Lò hơi, Cân xe, Cơm, Bồi dưỡng cân, Bảo vệ, Va vỡ, Rửa xe, Khác) with diacritic-insensitive matching; unknowns fall into Khác
+- **New export columns**: Ngày nhận, Dầu HN (L), Dư đầu, Dư cuối, Ghi chú
+- **Filter-aware exports**: CSV/Excel/JSON/PDF now honor pickup, delivery, driver, and status filters — not just the server-side date range
+- **Range + filter label** written into every export (top line of CSV, merged title row in Excel, `Khoảng thời gian` key in JSON, subtitle in PDF)
+
+### PDF rendering
+
+- **Vietnamese diacritics fixed**: Embedded Roboto Regular + Bold TTFs and registered them with jsPDF via `addFileToVFS` + `addFont`. jsPDF's built-in fonts are ASCII-only and were mangling `Bắc`/`Dầu`/etc. into per-byte gibberish.
+- **PDF layout trimmed**: dropped the 9 category columns from the PDF only (they remain in CSV/Excel/JSON) so the A4 landscape table stays readable. Column alignment tuned per type (right for numbers, center for dates/status).
+
+### UI polish
+
+- Totals and pagination lifted out of the table's horizontal scroll container so they stay anchored to the card edges when scrolling the wide table sideways.
+
 ## v1.0.0 — 2026-04-06
 
 ### Shipment contract tracking (Hợp đồng tab)

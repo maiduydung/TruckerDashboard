@@ -32,10 +32,13 @@ graph TB
 ### Trip Management (Tổng quan tab)
 - **Metric cards**: Total trips, advance payments, total costs
 - **Interactive charts**: Cost breakdown by driver, weight by driver, cost categories, trips over time (Chart.js)
-- **Detailed trip table**: Multi-stop expansion, per-stop weights, balance tracking, additional cost tags
-- **Filters**: Driver, pickup location, delivery location, status (draft/completed), time range
+- **Detailed trip table**: Multi-stop expansion, per-stop weights, balance tracking, additional cost tags, driver notes, Ngày gửi + Ngày nhận columns, Dầu HN (liters)
+- **Filters**: Driver, pickup location, delivery location, status (draft/completed), time range (7/14/30/90 presets + custom integer input). Location dropdowns are populated from `/dashboard/locations` so new shipping sites show up automatically.
+- **Explicit range label**: pill under the filters shows the concrete `Từ DD/MM/YYYY đến DD/MM/YYYY` window; same label travels into every export.
+- **Filter totals**: when a location filter is active, a summary bar shows matched trip count + aggregate KG lấy / KG giao.
+- **Pagination**: trip-aware (multi-stop trips stay grouped), 10/20/50/100 per page.
 - **Low-balance alerts**: Amber banner when any trucker's closing balance < 500,000 VND
-- **Multi-format export**: CSV, Excel, PDF, JSON
+- **Multi-format export** (CSV, Excel, PDF, JSON): honors all client-side filters, splits phát sinh into 9 category columns, embeds Roboto for Vietnamese diacritics in PDF.
 
 ### Shipment Contracts (Hợp đồng tab)
 - **Contract CRUD**: Create, edit, delete shipment contracts with target tonnage, price/kg, and date range
