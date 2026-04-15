@@ -4,8 +4,8 @@ import { saveAs } from 'file-saver';
 import XLSX from 'xlsx-js-style';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import notoSansRegularUrl from '$lib/assets/fonts/NotoSans-Regular.ttf?url';
-import notoSansBoldUrl from '$lib/assets/fonts/NotoSans-Bold.ttf?url';
+import robotoRegularUrl from '$lib/assets/fonts/Roboto-Regular.ttf?url';
+import robotoBoldUrl from '$lib/assets/fonts/Roboto-Bold.ttf?url';
 
 let _fontCache: { regular: string; bold: string } | null = null;
 async function loadPdfFonts(): Promise<{ regular: string; bold: string }> {
@@ -21,7 +21,7 @@ async function loadPdfFonts(): Promise<{ regular: string; bold: string }> {
 		}
 		return btoa(bin);
 	};
-	const [regular, bold] = await Promise.all([toBase64(notoSansRegularUrl), toBase64(notoSansBoldUrl)]);
+	const [regular, bold] = await Promise.all([toBase64(robotoRegularUrl), toBase64(robotoBoldUrl)]);
 	_fontCache = { regular, bold };
 	return _fontCache;
 }
@@ -382,18 +382,18 @@ export async function exportPDF(trips: Trip[]) {
 	const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
 	const { regular, bold } = await loadPdfFonts();
-	doc.addFileToVFS('NotoSans-Regular.ttf', regular);
-	doc.addFileToVFS('NotoSans-Bold.ttf', bold);
-	doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
-	doc.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
-	doc.setFont('NotoSans', 'normal');
+	doc.addFileToVFS('Roboto-Regular.ttf', regular);
+	doc.addFileToVFS('Roboto-Bold.ttf', bold);
+	doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+	doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+	doc.setFont('Roboto', 'normal');
 
-	doc.setFont('NotoSans', 'bold');
+	doc.setFont('Roboto', 'bold');
 	doc.setFontSize(18);
 	doc.setTextColor(13, 91, 191);
 	doc.text('Báo cáo chuyến — Pathfinder', 14, 18);
 
-	doc.setFont('NotoSans', 'normal');
+	doc.setFont('Roboto', 'normal');
 	doc.setFontSize(9);
 	doc.setTextColor(107, 114, 128);
 	doc.text(`Xuất lúc ${new Date().toLocaleString('vi-VN')}`, 14, 25);
@@ -428,8 +428,8 @@ export async function exportPDF(trips: Trip[]) {
 		startY: 32,
 		head: [headers],
 		body,
-		styles: { fontSize: 7, cellPadding: 1.5, font: 'NotoSans', fontStyle: 'normal', overflow: 'linebreak' },
-		headStyles: { fillColor: [18, 115, 255], textColor: 255, font: 'NotoSans', fontStyle: 'bold' },
+		styles: { fontSize: 7, cellPadding: 1.5, font: 'Roboto', fontStyle: 'normal', overflow: 'linebreak' },
+		headStyles: { fillColor: [18, 115, 255], textColor: 255, font: 'Roboto', fontStyle: 'bold' },
 		alternateRowStyles: { fillColor: [249, 250, 251] },
 		columnStyles: {
 			1: { halign: 'center' },
