@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fetchContracts, createContract, updateContract, deleteContract } from '$lib/api/client';
+	import { fetchContracts, createContract, updateContract, deleteContract, ApiError } from '$lib/api/client';
 	import type { Contract, ContractForm } from '$lib/api/types';
 	import { vnd } from '$lib/format';
 
@@ -9,6 +9,7 @@
 	let showForm = $state(false);
 	let editingId: string | null = $state(null);
 	let saving = $state(false);
+	let fieldErrors: Record<string, string> = $state({});
 
 	let form: ContractForm = $state({
 		name: '', subject: '', targetWeightKg: 0, pricePerKg: 0,
@@ -19,7 +20,24 @@
 		form = { name: '', subject: '', targetWeightKg: 0, pricePerKg: 0, startDate: '', endDate: '', notes: '' };
 		editingId = null;
 		showForm = false;
+		fieldErrors = {};
+		error = '';
 	}
+
+	function validateClient(): Record<string, string> {
+		const errs: Record<string, string> = {};
+		if (!form.name.trim()) errs.name = 'Vui lòng nhập tên hợp đồng';
+		if (!form.subject.trim()) errs.subject = 'Vui lòng nhập đối tượng hợp đồng';
+		if (!form.targetWeightKg || form.targetWeightKg <= 0) errs.targetWeightKg = 'Khối lượng cần giao phải lớn hơn 0';
+		if (!form.startDate) errs.startDate = 'Vui lòng chọn ngày bắt đầu';
+		if (!form.endDate) errs.endDate = 'Vui lòng chọn ngày kết thúc';
+		if (form.startDate && form.endDate && form.endDate < form.startDate) {
+			errs.endDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+		}
+		return errs;
+	}
+
+	let formInvalid = $derived(Object.keys(validateClient()).length > 0);
 
 	async function loadContracts() {
 		loading = true;
@@ -34,7 +52,15 @@
 	}
 
 	async function handleSave() {
+		const clientErrs = validateClient();
+		if (Object.keys(clientErrs).length > 0) {
+			fieldErrors = clientErrs;
+			error = 'Vui lòng kiểm tra các trường còn thiếu';
+			return;
+		}
 		saving = true;
+		fieldErrors = {};
+		error = '';
 		try {
 			if (editingId) {
 				await updateContract(editingId, form);
@@ -44,7 +70,12 @@
 			resetForm();
 			await loadContracts();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Lỗi khi lưu hợp đồng';
+			if (e instanceof ApiError) {
+				fieldErrors = e.fieldErrors;
+				error = e.summary || e.message;
+			} else {
+				error = e instanceof Error ? e.message : 'Lỗi khi lưu hợp đồng';
+			}
 		} finally {
 			saving = false;
 		}
@@ -69,11 +100,55 @@
 		}
 	}
 
+	function contractAsForm(c: Contract): ContractForm {
+		// Pluck the fields _validate_payload requires; status is appended separately.
+		return {
+			name: c.name,
+			subject: c.subject,
+			targetWeightKg: c.targetWeightKg,
+			pricePerKg: c.pricePerKg,
+			startDate: c.startDate,
+			endDate: c.endDate,
+			notes: c.notes,
+		};
+	}
+
+	async function handleMarkComplete(c: Contract) {
+		if (!confirm(`Đánh dấu hợp đồng "${c.name}" là đã hoàn thành?`)) return;
+		try {
+			await updateContract(c.id, { ...contractAsForm(c), status: 'completed' });
+			await loadContracts();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Lỗi khi đánh dấu hoàn thành';
+		}
+	}
+
+	async function handleReopen(c: Contract) {
+		if (!confirm(`Mở lại hợp đồng "${c.name}"? Hệ thống sẽ tự kiểm tra lại trạng thái ở lần đồng bộ tới.`)) return;
+		try {
+			await updateContract(c.id, { ...contractAsForm(c), status: 'active' });
+			await loadContracts();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Lỗi khi mở lại hợp đồng';
+		}
+	}
+
 	function statusColor(c: Contract): string {
-		if (c.completionPct >= 100) return 'done';
-		if (c.daysLeft <= 0) return 'overdue';
-		if (c.completionPct >= 80) return 'warning';
+		// Status-driven (drives ct-card border + ct-fill-* + ct-pct-* CSS classes).
+		// Once the cron flips a contract out of 'active', color becomes terminal
+		// — no more "red at 99.9%, green at 100.2%" inversion.
+		if (c.status === 'completed') return 'done';
+		if (c.status === 'closed_short') return 'overdue';
+		if (c.status === 'active' && c.completionPct >= 100) return 'done'; // green hint: ready to force-close
+		if (c.status === 'active' && c.completionPct >= 90) return 'warning';
 		return 'active';
+	}
+
+	function badgeLabel(c: Contract): string {
+		if (c.status === 'completed') return 'Đã hoàn thành';
+		if (c.status === 'closed_short') return 'Hết hạn — chưa giao đủ';
+		if (c.status === 'active' && c.completionPct >= 90) return 'Sắp hoàn thành';
+		return 'Đang giao';
 	}
 
 	function formatContractDate(dateStr: string): string {
@@ -119,27 +194,33 @@
 		<div class="ct-form-grid">
 			<div class="ct-field">
 				<label for="ct-name">Tên hợp đồng</label>
-				<input id="ct-name" type="text" bind:value={form.name} placeholder="VD: HĐ tháng 4 TBS">
+				<input id="ct-name" type="text" bind:value={form.name} placeholder="VD: HĐ tháng 4 TBS" class:ct-invalid={fieldErrors.name}>
+				{#if fieldErrors.name}<span class="ct-field-error">{fieldErrors.name}</span>{/if}
 			</div>
 			<div class="ct-field">
 				<label for="ct-subject">Đối tượng hợp đồng</label>
-				<input id="ct-subject" type="text" bind:value={form.subject} placeholder="VD: TBS, LHH (trùng với nơi giao)">
+				<input id="ct-subject" type="text" bind:value={form.subject} placeholder="VD: TBS, LHH (trùng với nơi giao)" class:ct-invalid={fieldErrors.subject}>
+				{#if fieldErrors.subject}<span class="ct-field-error">{fieldErrors.subject}</span>{/if}
 			</div>
 			<div class="ct-field">
 				<label for="ct-target">Khối lượng cần giao (kg)</label>
-				<input id="ct-target" type="number" bind:value={form.targetWeightKg} min="0">
+				<input id="ct-target" type="number" bind:value={form.targetWeightKg} min="0" class:ct-invalid={fieldErrors.targetWeightKg}>
+				{#if fieldErrors.targetWeightKg}<span class="ct-field-error">{fieldErrors.targetWeightKg}</span>{/if}
 			</div>
 			<div class="ct-field">
 				<label for="ct-price">Đơn giá (1000đ/kg)</label>
-				<input id="ct-price" type="number" bind:value={form.pricePerKg} min="0" placeholder="VD: 200 = 200.000đ/kg">
+				<input id="ct-price" type="number" bind:value={form.pricePerKg} min="0" placeholder="VD: 200 = 200.000đ/kg" class:ct-invalid={fieldErrors.pricePerKg}>
+				{#if fieldErrors.pricePerKg}<span class="ct-field-error">{fieldErrors.pricePerKg}</span>{/if}
 			</div>
 			<div class="ct-field">
 				<label for="ct-start">Ngày bắt đầu</label>
-				<input id="ct-start" type="date" bind:value={form.startDate}>
+				<input id="ct-start" type="date" bind:value={form.startDate} class:ct-invalid={fieldErrors.startDate}>
+				{#if fieldErrors.startDate}<span class="ct-field-error">{fieldErrors.startDate}</span>{/if}
 			</div>
 			<div class="ct-field">
 				<label for="ct-end">Ngày kết thúc</label>
-				<input id="ct-end" type="date" bind:value={form.endDate}>
+				<input id="ct-end" type="date" bind:value={form.endDate} class:ct-invalid={fieldErrors.endDate}>
+				{#if fieldErrors.endDate}<span class="ct-field-error">{fieldErrors.endDate}</span>{/if}
 			</div>
 			<div class="ct-field ct-field-full">
 				<label for="ct-notes">Ghi chú</label>
@@ -148,7 +229,7 @@
 		</div>
 		<div class="ct-form-actions">
 			<button class="ct-btn" onclick={resetForm}>Huỷ</button>
-			<button class="ct-btn ct-btn-primary" onclick={handleSave} disabled={saving}>
+			<button class="ct-btn ct-btn-primary" onclick={handleSave} disabled={saving || formInvalid}>
 				{saving ? 'Đang lưu...' : 'Lưu'}
 			</button>
 		</div>
@@ -168,9 +249,19 @@
 					<div class="ct-card-info">
 						<div class="ct-card-name">{c.name}</div>
 						<span class="ct-subject-badge">{c.subject}</span>
+						<span class="ct-status-badge ct-status-{color}">{badgeLabel(c)}</span>
 						<span class="ct-date-range">{formatContractDate(c.startDate)} — {formatContractDate(c.endDate)}</span>
 					</div>
 					<div class="ct-card-actions">
+						{#if c.status === 'active' && c.completionPct >= 100}
+							<button class="ct-action-btn ct-action-complete" onclick={() => handleMarkComplete(c)}>
+								Đánh dấu hoàn thành
+							</button>
+						{:else if c.status === 'completed' || c.status === 'closed_short'}
+							<button class="ct-action-btn ct-action-reopen" onclick={() => handleReopen(c)}>
+								Mở lại
+							</button>
+						{/if}
 						<button class="ct-action-btn" onclick={() => startEdit(c)}>Sửa</button>
 						<button class="ct-action-btn ct-action-del" onclick={() => handleDelete(c.id, c.name)}>Xoá</button>
 					</div>
@@ -259,6 +350,10 @@
 	}
 	.ct-action-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
 	.ct-action-del:hover { border-color: #fca5a5; color: #ef4444; background: #fef2f2; }
+	.ct-action-complete { border-color: #10b981; color: #065f46; background: #ecfdf5; }
+	.ct-action-complete:hover { border-color: #10b981; color: white; background: #10b981; }
+	.ct-action-reopen { border-color: #9ca3af; color: #374151; }
+	.ct-action-reopen:hover { border-color: #6b7280; color: #111827; background: #f3f4f6; }
 
 	/* ── Form ────────────────────────────────────────── */
 	.ct-form-card {
@@ -274,8 +369,12 @@
 		transition: border-color 0.15s;
 	}
 	.ct-field input:focus, .ct-field textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(18, 115, 255, 0.1); }
+	.ct-field input.ct-invalid { border-color: #ef4444; background: #fef2f2; }
+	.ct-field input.ct-invalid:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12); }
+	.ct-field-error { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; color: #dc2626; }
 	.ct-field-full { grid-column: 1 / -1; }
 	.ct-form-actions { display: flex; gap: 10px; justify-content: flex-end; }
+	.ct-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 	/* ── Card list (single column, full width) ────────── */
 	.ct-list { display: flex; flex-direction: column; gap: 14px; }
@@ -299,6 +398,14 @@
 		display: inline-block; padding: 2px 10px; border-radius: 20px;
 		font-size: 12px; font-weight: 700; background: var(--blue-light); color: var(--blue);
 	}
+	.ct-status-badge {
+		display: inline-block; padding: 2px 10px; border-radius: 999px;
+		font-size: 11px; font-weight: 600; border: 1px solid transparent;
+	}
+	.ct-status-badge.ct-status-active   { color: #374151; background: #f3f4f6; border-color: #9ca3af; }
+	.ct-status-badge.ct-status-warning  { color: #78350f; background: #fef3c7; border-color: #f59e0b; }
+	.ct-status-badge.ct-status-done     { color: #065f46; background: #d1fae5; border-color: #10b981; }
+	.ct-status-badge.ct-status-overdue  { color: #7f1d1d; background: #fee2e2; border-color: #ef4444; }
 	.ct-date-range { font-size: 12px; color: var(--text-muted); }
 	.ct-card-actions { display: flex; gap: 6px; }
 

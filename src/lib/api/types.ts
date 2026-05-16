@@ -80,6 +80,8 @@ export interface Filters {
 	days: number;
 }
 
+export type ContractStatus = 'active' | 'completed' | 'closed_short';
+
 export interface Contract {
 	id: string;
 	name: string;
@@ -89,13 +91,15 @@ export interface Contract {
 	pricePerKg: number;
 	startDate: string;
 	endDate: string;
-	status: string;
+	status: ContractStatus;
 	completionPct: number;
 	remainingKg: number;
 	contractValueVnd: number;
 	daysLeft: number;
 	alerting: boolean;
 	notes: string;
+	completedAt: string | null;
+	nearCompletionNotifiedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
