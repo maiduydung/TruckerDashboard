@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fetchSummary, fetchTrips, fetchDrivers, fetchLocations } from '$lib/api/client';
-	import type { DashboardSummary, Trip, Filters, DisplayRow, StopRecord } from '$lib/api/types';
+	import { fetchSummary, fetchTrips, fetchDrivers, fetchLocations, wipePreviousMonths, ApiError } from '$lib/api/client';
+	import type { DashboardSummary, Trip, Filters, DisplayRow, StopRecord, WipeResult } from '$lib/api/types';
 	import { vnd, formatDate } from '$lib/format';
 	import { exportCSV, exportExcel, exportJSON, exportPDF } from '$lib/exports/exporter';
 	import CostBreakdown from '$lib/charts/CostBreakdown.svelte';
@@ -17,6 +17,42 @@
 	let trips: Trip[] = $state([]);
 	let loading = $state(true);
 	let error = $state('');
+
+	let wipeInFlight = $state(false);
+	let confirmOpen = $state(false);
+
+	function previousMonthLabel(): number {
+		const m = new Date().getMonth(); // 0=Jan ... 11=Dec
+		return m === 0 ? 12 : m;         // Jan→12, Feb→1, ..., Dec→11
+	}
+
+	function openConfirm() {
+		confirmOpen = true;
+	}
+
+	function cancelWipe() {
+		confirmOpen = false;
+	}
+
+	async function executeWipe() {
+		wipeInFlight = true;
+		try {
+			const result: WipeResult = await wipePreviousMonths('dashboard');
+			confirmOpen = false;
+			alert(`Đã xoá ${result.wipedCount} chuyến`);
+			await loadData();
+		} catch (e) {
+			console.error('wipe failed', e);
+			if (e instanceof ApiError) {
+				alert(`Không thể xoá ngay: ${e.message}`);
+			} else {
+				alert('Không thể xoá ngay. Thử lại sau.');
+			}
+		} finally {
+			wipeInFlight = false;
+			confirmOpen = false;
+		}
+	}
 
 	let activeTab = $state<'dashboard' | 'contracts'>('dashboard');
 	let filters: Filters = $state({ driver: '', status: '', days: 7 });
@@ -303,6 +339,14 @@
 					}
 				}}
 			/>
+			<button
+				type="button"
+				class="btn btn-primary wipe-btn"
+				disabled={wipeInFlight}
+				onclick={openConfirm}
+			>
+				Xoá dữ liệu tháng {previousMonthLabel()}
+			</button>
 		</div>
 		{/if}
 	</div>
@@ -349,6 +393,12 @@
 	{#if loading}
 		<div class="loading">Đang tải dữ liệu...</div>
 	{:else if summary && trips.length > 0}
+		{#if summary?.lastWipeAt}
+			<div class="last-wipe-banner">
+				💾 Lần xoá gần nhất: {new Date(summary.lastWipeAt).toLocaleDateString('vi-VN')}
+			</div>
+		{/if}
+
 		<div class="metrics">
 			<div class="metric-card">
 				<div class="metric-value">{summary.totalTrips} <span class="metric-unit">chuyến</span></div>
@@ -548,6 +598,42 @@
 
 	{/if}
 </div>
+
+{#if confirmOpen}
+	<div
+		class="modal-overlay"
+		onclick={cancelWipe}
+		onkeydown={(e) => { if (e.key === 'Escape') cancelWipe(); }}
+		role="presentation"
+	>
+		<div
+			class="modal"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+			role="dialog"
+			aria-modal="true"
+			tabindex="-1"
+		>
+			<h3>Bạn có chắc?</h3>
+			<p>
+				Sẽ xoá <strong>{summary?.pendingWipeCount ?? 0}</strong> chuyến
+				từ tháng {previousMonthLabel()} trở về trước.
+				Không thể hoàn tác từ giao diện này.
+			</p>
+			<div class="modal-actions">
+				<button type="button" class="btn-secondary" onclick={cancelWipe}>Huỷ</button>
+				<button
+					type="button"
+					class="btn-danger"
+					onclick={executeWipe}
+					disabled={wipeInFlight}
+				>
+					{wipeInFlight ? 'Đang xoá...' : 'Xoá ngay'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	/* ── Tab navigation ──────────────────────────────── */
@@ -893,4 +979,75 @@
 	.alert-driver { font-weight: 600; color: #92400e; }
 	.alert-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
 	.alert-sep { color: #d97706; margin: 0 2px; }
+
+	/* ── Wipe button ─────────────────────────────────── */
+	.wipe-btn {
+		margin-left: auto;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	.wipe-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+	/* ── Last-wipe banner ────────────────────────────── */
+	.last-wipe-banner {
+		background: #eff6ff;
+		border: 1px solid #bfdbfe;
+		color: #1e40af;
+		padding: 10px 16px;
+		border-radius: 8px;
+		margin: 0 0 16px;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: 13px;
+		font-weight: 500;
+	}
+
+	/* ── Confirm modal ───────────────────────────────── */
+	.modal-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+	.modal {
+		background: white;
+		border-radius: 12px;
+		padding: 24px;
+		max-width: 420px;
+		width: calc(100% - 32px);
+		font-family: 'Inter', system-ui, sans-serif;
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+	}
+	.modal h3 { margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #111827; }
+	.modal p { margin: 0 0 20px; color: #4b5563; line-height: 1.5; font-size: 14px; }
+	.modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+	.btn-secondary {
+		background: #f3f4f6;
+		color: #1f2937;
+		border: none;
+		padding: 8px 16px;
+		border-radius: 8px;
+		font-weight: 600;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: 14px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+	.btn-secondary:hover { background: #e5e7eb; }
+	.btn-danger {
+		background: #ef4444;
+		color: white;
+		border: none;
+		padding: 8px 16px;
+		border-radius: 8px;
+		font-weight: 600;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: 14px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+	.btn-danger:hover:not(:disabled) { background: #dc2626; }
+	.btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
