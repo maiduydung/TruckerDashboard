@@ -1,6 +1,7 @@
-import type { DashboardSummary, Filters, Trip, Contract, ContractForm, ContractStatus } from './types';
+import type { DashboardSummary, Filters, Trip, Contract, ContractForm, ContractStatus, WipeResult } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://nhutin-trucker-api.azurewebsites.net/api';
+const FUNCTIONS_KEY = import.meta.env.VITE_FUNCTIONS_KEY ?? '';
 
 /**
  * Error thrown by API client functions when the backend returns a non-2xx response.
@@ -101,4 +102,29 @@ export async function updateContract(
 export async function deleteContract(id: string): Promise<void> {
 	const res = await fetch(`${API_BASE}/contracts/${id}`, { method: 'DELETE' });
 	await throwIfNotOk(res);
+}
+
+/**
+ * Trigger a soft-delete of trips dated before the start of the current month (ICT).
+ * Backend requires the `x-functions-key` header. Throws ApiError on non-2xx.
+ *
+ * @param triggeredBy free-form log label, defaults to 'dashboard'
+ */
+export async function wipePreviousMonths(
+	triggeredBy: string = 'dashboard'
+): Promise<WipeResult> {
+	const res = await fetch(`${API_BASE}/wipe`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'x-functions-key': FUNCTIONS_KEY,
+		},
+		body: JSON.stringify({ triggered_by: triggeredBy }),
+	});
+	await throwIfNotOk(res);
+	const data = await res.json();
+	return {
+		wipedCount: data.wiped_count,
+		cutoff: data.cutoff,
+	};
 }

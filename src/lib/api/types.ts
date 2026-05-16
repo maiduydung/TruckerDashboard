@@ -72,6 +72,13 @@ export interface DashboardSummary {
 	totalCost: number;
 	totalPickupKg: number;
 	totalDeliveryKg: number;
+	lastWipeAt: string | null;    // ISO8601 timestamp of last wipe, or null if never wiped
+	pendingWipeCount: number;     // trips eligible for next wipe right now
+}
+
+export interface WipeResult {
+	wipedCount: number;
+	cutoff: string;               // ISO8601 timestamp of the last wiped second
 }
 
 export interface Filters {
