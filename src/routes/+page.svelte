@@ -290,66 +290,88 @@
 			<h1><span class="logo-accent">Pathfinder</span> Trucker Dashboard</h1>
 		</div>
 		{#if activeTab === 'dashboard'}
-		<div class="filters">
-			<select bind:value={filters.driver} onchange={handleFilterChange}>
-				<option value="">Tất cả tài xế</option>
-				{#each drivers as d}
-					<option value={d}>{d}</option>
-				{/each}
-			</select>
-			<select bind:value={pickupFilter}>
-				<option value="">Tất cả nơi lấy</option>
-				{#each pickupLocations as loc}
-					<option value={loc}>{loc}</option>
-				{/each}
-			</select>
-			<select bind:value={deliveryFilter}>
-				<option value="">Tất cả nơi giao</option>
-				{#each deliveryLocations as loc}
-					<option value={loc}>{loc}</option>
-				{/each}
-			</select>
-			<select bind:value={filters.status} onchange={handleFilterChange}>
-				<option value="">Tất cả trạng thái</option>
-				<option value="completed">Hoàn tất</option>
-				<option value="draft">Nháp</option>
-			</select>
-			<select bind:value={filters.days} onchange={handleFilterChange}>
-				<option value={0}>Tất cả</option>
-				<option value={7}>7 ngày</option>
-				<option value={14}>14 ngày</option>
-				<option value={30}>30 ngày</option>
-				<option value={90}>90 ngày</option>
-				{#if filters.days > 0 && ![7, 14, 30, 90].includes(filters.days)}
-					<option value={filters.days}>{filters.days} ngày</option>
-				{/if}
-			</select>
-			<input
-				type="number"
-				class="days-input"
-				min="1"
-				step="1"
-				placeholder="Tuỳ chỉnh ngày"
-				value={filters.days > 0 && ![7, 14, 30, 90].includes(filters.days) ? filters.days : ''}
-				onchange={(e) => {
-					const v = parseInt((e.currentTarget as HTMLInputElement).value, 10);
-					if (Number.isFinite(v) && v >= 1) {
-						filters.days = v;
-						handleFilterChange();
-					}
-				}}
-			/>
+		<div class="header-right">
 			<button
 				type="button"
-				class="btn btn-primary wipe-btn"
+				class="wipe-btn"
 				disabled={wipeInFlight}
 				onclick={openConfirm}
 			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					style="margin-right: 6px; vertical-align: -2px;"
+				>
+					<path d="M3 6h18" />
+					<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+					<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+				</svg>
 				Xoá dữ liệu tháng {previousMonthLabel()}
 			</button>
 		</div>
 		{/if}
 	</div>
+
+	{#if activeTab === 'dashboard'}
+	<div class="filters">
+		<select bind:value={filters.driver} onchange={handleFilterChange}>
+			<option value="">Tất cả tài xế</option>
+			{#each drivers as d}
+				<option value={d}>{d}</option>
+			{/each}
+		</select>
+		<select bind:value={pickupFilter}>
+			<option value="">Tất cả nơi lấy</option>
+			{#each pickupLocations as loc}
+				<option value={loc}>{loc}</option>
+			{/each}
+		</select>
+		<select bind:value={deliveryFilter}>
+			<option value="">Tất cả nơi giao</option>
+			{#each deliveryLocations as loc}
+				<option value={loc}>{loc}</option>
+			{/each}
+		</select>
+		<select bind:value={filters.status} onchange={handleFilterChange}>
+			<option value="">Tất cả trạng thái</option>
+			<option value="completed">Hoàn tất</option>
+			<option value="draft">Nháp</option>
+		</select>
+		<select bind:value={filters.days} onchange={handleFilterChange}>
+			<option value={0}>Tất cả</option>
+			<option value={7}>7 ngày</option>
+			<option value={14}>14 ngày</option>
+			<option value={30}>30 ngày</option>
+			<option value={90}>90 ngày</option>
+			{#if filters.days > 0 && ![7, 14, 30, 90].includes(filters.days)}
+				<option value={filters.days}>{filters.days} ngày</option>
+			{/if}
+		</select>
+		<input
+			type="number"
+			class="days-input"
+			min="1"
+			step="1"
+			placeholder="Tuỳ chỉnh ngày"
+			value={filters.days > 0 && ![7, 14, 30, 90].includes(filters.days) ? filters.days : ''}
+			onchange={(e) => {
+				const v = parseInt((e.currentTarget as HTMLInputElement).value, 10);
+				if (Number.isFinite(v) && v >= 1) {
+					filters.days = v;
+					handleFilterChange();
+				}
+			}}
+		/>
+	</div>
+	{/if}
 
 	{#if activeTab === 'dashboard'}
 		<div class="range-caption">
@@ -663,7 +685,7 @@
 		align-items: center;
 		gap: 6px;
 		padding: 6px 12px;
-		margin: 0 0 16px;
+		margin: 16px 0 16px;
 		background: #f3f6fb;
 		border: 1px solid #e5edf8;
 		border-radius: 999px;
@@ -980,13 +1002,37 @@
 	.alert-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
 	.alert-sep { color: #d97706; margin: 0 2px; }
 
-	/* ── Wipe button ─────────────────────────────────── */
-	.wipe-btn {
-		margin-left: auto;
-		white-space: nowrap;
-		flex-shrink: 0;
+	/* ── Header right slot ───────────────────────────── */
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
-	.wipe-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+	/* ── Wipe button (outlined-danger ghost) ─────────── */
+	.wipe-btn {
+		display: inline-flex;
+		align-items: center;
+		background: white;
+		border: 1px solid #dc2626;
+		color: #dc2626;
+		padding: 6px 12px;
+		border-radius: 8px;
+		font-size: 13px;
+		font-weight: 600;
+		font-family: 'Inter', system-ui, sans-serif;
+		cursor: pointer;
+		white-space: nowrap;
+		transition: background 0.15s, color 0.15s;
+	}
+	.wipe-btn:hover:not(:disabled) {
+		background: #dc2626;
+		color: white;
+	}
+	.wipe-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
 
 	/* ── Last-wipe banner ────────────────────────────── */
 	.last-wipe-banner {
