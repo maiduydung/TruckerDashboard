@@ -38,7 +38,8 @@ function buildParams(filters: Filters): string {
 	const params = new URLSearchParams();
 	if (filters.driver) params.set('driver', filters.driver);
 	if (filters.status) params.set('status', filters.status);
-	if (filters.days > 0) params.set('days', String(filters.days));
+	if (filters.from) params.set('from', filters.from);
+	if (filters.to) params.set('to', filters.to);
 	return params.toString();
 }
 

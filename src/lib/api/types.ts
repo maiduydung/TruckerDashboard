@@ -84,7 +84,8 @@ export interface WipeResult {
 export interface Filters {
 	driver: string;
 	status: string;
-	days: number;
+	from: string;   // YYYY-MM-DD, inclusive (ICT day boundary). Empty = no lower bound.
+	to: string;     // YYYY-MM-DD, inclusive (ICT day boundary). Empty = no upper bound.
 }
 
 export type ContractStatus = 'active' | 'completed' | 'closed_short';

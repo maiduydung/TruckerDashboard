@@ -9,6 +9,7 @@
 	import Timeline from '$lib/charts/Timeline.svelte';
 	import CostCategories from '$lib/charts/CostCategories.svelte';
 	import ContractTab from '$lib/contracts/ContractTab.svelte';
+	import DateRangePicker from '$lib/DateRangePicker.svelte';
 
 	let drivers: string[] = $state([]);
 	let allPickups: string[] = $state([]);
@@ -55,7 +56,21 @@
 	}
 
 	let activeTab = $state<'dashboard' | 'contracts'>('dashboard');
-	let filters: Filters = $state({ driver: '', status: '', days: 7 });
+
+	function isoDate(d: Date): string {
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const dd = String(d.getDate()).padStart(2, '0');
+		return `${y}-${m}-${dd}`;
+	}
+	const _today = new Date();
+	const _sevenAgo = new Date(_today); _sevenAgo.setDate(_today.getDate() - 6);
+	let filters: Filters = $state({
+		driver: '',
+		status: '',
+		from: isoDate(_sevenAgo),
+		to: isoDate(_today),
+	});
 	let pickupFilter = $state('');
 	let deliveryFilter = $state('');
 
@@ -71,10 +86,15 @@
 
 	let rangeLabel: string = $derived.by(() => {
 		const today = new Date();
-		if (!filters.days || filters.days <= 0) return `Tất cả dữ liệu · tính đến ${fmtDay(today)}`;
-		const from = new Date(today);
-		from.setDate(from.getDate() - filters.days);
-		return `Từ ${fmtDay(from)} đến ${fmtDay(today)} · ${filters.days} ngày gần nhất`;
+		if (!filters.from && !filters.to) return `Tất cả dữ liệu · tính đến ${fmtDay(today)}`;
+		const fromD = filters.from ? new Date(filters.from) : null;
+		const toD = filters.to ? new Date(filters.to) : null;
+		if (fromD && toD) {
+			const days = Math.round((toD.getTime() - fromD.getTime()) / 86400000) + 1;
+			return `Từ ${fmtDay(fromD)} đến ${fmtDay(toD)} · ${days} ngày`;
+		}
+		if (fromD) return `Từ ${fmtDay(fromD)} đến nay`;
+		return `Đến ${fmtDay(toD!)}`;
 	});
 
 	function getSummaryTotalCost(summaryValue: DashboardSummary): number {
@@ -345,31 +365,7 @@
 			<option value="completed">Hoàn tất</option>
 			<option value="draft">Nháp</option>
 		</select>
-		<select bind:value={filters.days} onchange={handleFilterChange}>
-			<option value={0}>Tất cả</option>
-			<option value={7}>7 ngày</option>
-			<option value={14}>14 ngày</option>
-			<option value={30}>30 ngày</option>
-			<option value={90}>90 ngày</option>
-			{#if filters.days > 0 && ![7, 14, 30, 90].includes(filters.days)}
-				<option value={filters.days}>{filters.days} ngày</option>
-			{/if}
-		</select>
-		<input
-			type="number"
-			class="days-input"
-			min="1"
-			step="1"
-			placeholder="Tuỳ chỉnh ngày"
-			value={filters.days > 0 && ![7, 14, 30, 90].includes(filters.days) ? filters.days : ''}
-			onchange={(e) => {
-				const v = parseInt((e.currentTarget as HTMLInputElement).value, 10);
-				if (Number.isFinite(v) && v >= 1) {
-					filters.days = v;
-					handleFilterChange();
-				}
-			}}
-		/>
+		<DateRangePicker bind:from={filters.from} bind:to={filters.to} onchange={handleFilterChange} />
 	</div>
 	{/if}
 
@@ -694,22 +690,6 @@
 		font-weight: 500;
 	}
 	.range-icon { font-size: 13px; }
-
-	.days-input {
-		width: 170px;
-		padding: 6px 10px;
-		font-size: 13px;
-		font-family: inherit;
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		background: white;
-	}
-	.days-input:focus {
-		outline: none;
-		border-color: #1273FF;
-	}
-	.days-input::-webkit-outer-spin-button,
-	.days-input::-webkit-inner-spin-button { opacity: 1; }
 
 	.filter-totals {
 		display: flex;
