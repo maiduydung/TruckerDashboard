@@ -146,6 +146,7 @@
 					openingBalance: t.opening_balance,
 					fuelNamPhatVnd: t.fuel_nam_phat_vnd,
 					fuelHnLiters: t.fuel_hn_liters,
+					fuelKhoLiters: t.fuel_kho_liters || 0,
 					loadingFeeVnd: t.loading_fee_vnd,
 					notes: t.notes || '',
 					additionalCosts: t.additional_costs,
@@ -472,6 +473,7 @@
 						<th>Dư đầu</th>
 						<th>Dầu NP</th>
 						<th>Dầu HN (L)</th>
+						<th>Dầu Kho (L)</th>
 						<th>Bốc xếp</th>
 						<th>Phát sinh</th>
 						<th>Tổng CP</th>
@@ -512,6 +514,7 @@
 							<td class="number">{row.isFirstRow ? vnd(row.openingBalance) : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.fuelNamPhatVnd) : ''}</td>
 							<td class="number">{row.isFirstRow && row.fuelHnLiters ? row.fuelHnLiters.toLocaleString() : ''}</td>
+							<td class="number">{row.isFirstRow && row.fuelKhoLiters ? row.fuelKhoLiters.toLocaleString() : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.loadingFeeVnd) : ''}</td>
 							<td class="number">
 								{#if row.isFirstRow}

@@ -18,6 +18,7 @@ export interface Trip {
 	total_delivery_kg: number;
 	fuel_nam_phat_vnd: number;
 	fuel_hn_liters: number;
+	fuel_kho_liters: number;
 	loading_fee_vnd: number;
 	additional_costs: string | AdditionalCost[];
 	opening_balance: number;
@@ -46,6 +47,7 @@ export interface DisplayRow {
 	openingBalance: number;
 	fuelNamPhatVnd: number;
 	fuelHnLiters: number;
+	fuelKhoLiters: number;
 	loadingFeeVnd: number;
 	notes: string;
 	additionalCosts: string | AdditionalCost[];

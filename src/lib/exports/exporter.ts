@@ -87,6 +87,7 @@ interface ExpandedRow {
 	openingBalance: number;
 	fuel: number;
 	fuelHnLiters: number;
+	fuelKhoLiters: number;
 	loading: number;
 	additional: number;
 	totalCost: number;
@@ -143,6 +144,7 @@ function expandToRows(trips: Trip[]): ExpandedRow[] {
 				openingBalance: t.opening_balance,
 				fuel: t.fuel_nam_phat_vnd,
 				fuelHnLiters: t.fuel_hn_liters || 0,
+				fuelKhoLiters: t.fuel_kho_liters || 0,
 				loading: t.loading_fee_vnd,
 				additional: t.additionalTotal,
 				totalCost: t.totalCost,
@@ -170,7 +172,7 @@ function csvEscape(v: string | number): string {
 export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 	const lines = [
 		...(rangeLabel ? [csvEscape(`Khoảng thời gian: ${rangeLabel}`), ''] : []),
 		headers.join(','),
@@ -187,6 +189,7 @@ export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 			r.isFirstRow ? r.openingBalance : '',
 			r.isFirstRow ? r.fuel : '',
 			r.isFirstRow ? (r.fuelHnLiters || '') : '',
+			r.isFirstRow ? (r.fuelKhoLiters || '') : '',
 			r.isFirstRow ? r.loading : '',
 			...ADDITIONAL_CATEGORIES.map(c => r.isFirstRow ? (r.additionalByCategory[c.key] || '') : ''),
 			r.isFirstRow ? r.additional : '',
@@ -203,7 +206,7 @@ export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 
 	const titleRows: (string | number)[][] = rangeLabel
 		? [[`Khoảng thời gian: ${rangeLabel}`], []]
@@ -225,6 +228,7 @@ export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 			r.isFirstRow ? r.openingBalance : '',
 			r.isFirstRow ? r.fuel : '',
 			r.isFirstRow ? (r.fuelHnLiters || '') : '',
+			r.isFirstRow ? (r.fuelKhoLiters || '') : '',
 			r.isFirstRow ? r.loading : '',
 			...ADDITIONAL_CATEGORIES.map(c => r.isFirstRow ? (r.additionalByCategory[c.key] || '') : ''),
 			r.isFirstRow ? r.additional : '',
@@ -251,6 +255,7 @@ export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 		{ wch: 14 },  // Dư đầu
 		{ wch: 14 },  // Dầu NP
 		{ wch: 12 },  // Dầu HN (L)
+		{ wch: 12 },  // Dầu Kho (L)
 		{ wch: 14 },  // Bốc xếp
 		...ADDITIONAL_CATEGORIES.map(() => ({ wch: 12 })),
 		{ wch: 14 },  // Phát sinh
@@ -383,6 +388,7 @@ export function exportJSON(trips: Trip[], rangeLabel: string = '') {
 			'Dư đầu': r.isFirstRow ? r.openingBalance : '',
 			'Dầu NP': r.isFirstRow ? r.fuel : '',
 			'Dầu HN (L)': r.isFirstRow ? r.fuelHnLiters : '',
+			'Dầu Kho (L)': r.isFirstRow ? r.fuelKhoLiters : '',
 			'Bốc xếp': r.isFirstRow ? r.loading : '',
 		};
 		for (const c of ADDITIONAL_CATEGORIES) {
@@ -429,7 +435,7 @@ export async function exportPDF(trips: Trip[], rangeLabel: string = '') {
 	doc.setLineWidth(0.5);
 	doc.line(14, 28, 283, 28);
 
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Dư cuối', 'TT'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Dư cuối', 'TT'];
 	const rows = expandToRows(trips);
 	const body = rows.map(r => [
 		r.driver,
@@ -444,6 +450,7 @@ export async function exportPDF(trips: Trip[], rangeLabel: string = '') {
 		r.isFirstRow ? vnd(r.openingBalance) : '',
 		r.isFirstRow ? vnd(r.fuel) : '',
 		r.isFirstRow && r.fuelHnLiters ? r.fuelHnLiters.toLocaleString() : '',
+		r.isFirstRow && r.fuelKhoLiters ? r.fuelKhoLiters.toLocaleString() : '',
 		r.isFirstRow ? vnd(r.loading) : '',
 		r.isFirstRow ? vnd(r.additional) : '',
 		r.isFirstRow ? vnd(r.totalCost) : '',
