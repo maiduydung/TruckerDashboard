@@ -1,5 +1,5 @@
 import type { Trip, StopRecord, AdditionalCost } from '$lib/api/types';
-import { vnd, formatDate, formatDateShort } from '$lib/format';
+import { vnd, exportDate, EXCEL_DATE_FMT, type ExportDate } from '$lib/format';
 import { saveAs } from 'file-saver';
 import XLSX from 'xlsx-js-style';
 import jsPDF from 'jspdf';
@@ -77,10 +77,10 @@ interface ExpandedRow {
 	tripNumber: number;
 	pickupLabel: string;
 	deliveryLabel: string;
-	date: string;
-	dateShort: string;
-	receivedDate: string;
-	receivedDateShort: string;
+	/** "Ngày lấy" — when the driver submitted the trip. */
+	pickupDate: ExportDate;
+	/** "Ngày giao" — when the trip was received. Blank while still outstanding. */
+	deliveryDate: ExportDate;
 	pickupKg: number;
 	deliveryKg: number;
 	advance: number;
@@ -134,10 +134,8 @@ function expandToRows(trips: Trip[]): ExpandedRow[] {
 				tripNumber: tripNum,
 				pickupLabel: p?.location || '',
 				deliveryLabel: d?.location || '',
-				date: formatDate(t.submitted_at),
-				dateShort: formatDateShort(t.submitted_at),
-				receivedDate: t.received_at ? formatDate(t.received_at) : '',
-				receivedDateShort: t.received_at ? formatDateShort(t.received_at) : '',
+				pickupDate: exportDate(t.submitted_at),
+				deliveryDate: exportDate(t.received_at),
 				pickupKg: p?.weightKg || 0,
 				deliveryKg: d?.weightKg || 0,
 				advance: t.advance_payment,
@@ -172,7 +170,7 @@ function csvEscape(v: string | number): string {
 export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày lấy', 'Ngày giao', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 	const lines = [
 		...(rangeLabel ? [csvEscape(`Khoảng thời gian: ${rangeLabel}`), ''] : []),
 		headers.join(','),
@@ -181,8 +179,8 @@ export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 			r.tripNumber,
 			csvEscape(r.pickupLabel),
 			csvEscape(r.deliveryLabel),
-			csvEscape(r.isFirstRow ? r.date : ''),
-			csvEscape(r.isFirstRow ? r.receivedDate : ''),
+			csvEscape(r.isFirstRow ? r.pickupDate.text : ''),
+			csvEscape(r.isFirstRow ? r.deliveryDate.text : ''),
 			r.pickupKg || '',
 			r.deliveryKg || '',
 			r.isFirstRow ? r.advance : '',
@@ -206,7 +204,7 @@ export function exportCSV(trips: Trip[], rangeLabel: string = '') {
 export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 	const rows = expandToRows(trips);
 	const catLabels = ADDITIONAL_CATEGORIES.map(c => c.label);
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày lấy', 'Ngày giao', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', ...catLabels, 'Phát sinh', 'Tổng CP', 'Dư cuối', 'Ghi chú', 'Trạng thái'];
 
 	const titleRows: (string | number)[][] = rangeLabel
 		? [[`Khoảng thời gian: ${rangeLabel}`], []]
@@ -220,8 +218,8 @@ export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 			r.tripNumber,
 			r.pickupLabel,
 			r.deliveryLabel,
-			r.isFirstRow ? r.date : '',
-			r.isFirstRow ? r.receivedDate : '',
+			r.isFirstRow ? r.pickupDate.serial : '',
+			r.isFirstRow ? r.deliveryDate.serial : '',
 			r.pickupKg || '',
 			r.deliveryKg || '',
 			r.isFirstRow ? r.advance : '',
@@ -247,8 +245,8 @@ export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 		{ wch: 7 },   // Chuyến
 		{ wch: 20 },  // Nơi lấy
 		{ wch: 20 },  // Nơi giao
-		{ wch: 14 },  // Ngày gửi
-		{ wch: 14 },  // Ngày nhận
+		{ wch: 14 },  // Ngày lấy
+		{ wch: 14 },  // Ngày giao
 		{ wch: 10 },  // KG lấy
 		{ wch: 10 },  // KG giao
 		{ wch: 14 },  // Tiền ứng
@@ -297,6 +295,9 @@ export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 	const kgCols = new Set([6, 7]);
 	const litersCols = new Set([11]);
 	const centerCols = new Set([1, 4, 5, statusCol]);
+	// Ngày lấy / Ngày giao hold Excel serials, not text — they need a date numFmt
+	// or Excel renders them as bare five-digit numbers.
+	const dateCols = new Set([4, 5]);
 
 	const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
 	for (let r = range.s.r; r <= range.e.r; r++) {
@@ -334,6 +335,10 @@ export function exportExcel(trips: Trip[], rangeLabel: string = '') {
 				if (vndCols.has(c) || kgCols.has(c) || litersCols.has(c)) {
 					cellStyle.numFmt = numFmt;
 					cellStyle.alignment.horizontal = 'right';
+				}
+
+				if (dateCols.has(c)) {
+					cellStyle.numFmt = EXCEL_DATE_FMT;
 				}
 
 				if (centerCols.has(c)) {
@@ -380,8 +385,8 @@ export function exportJSON(trips: Trip[], rangeLabel: string = '') {
 			'Chuyến': r.tripNumber,
 			'Nơi lấy': r.pickupLabel,
 			'Nơi giao': r.deliveryLabel,
-			'Ngày gửi': r.isFirstRow ? r.date : '',
-			'Ngày nhận': r.isFirstRow ? r.receivedDate : '',
+			'Ngày lấy': r.isFirstRow ? r.pickupDate.text : '',
+			'Ngày giao': r.isFirstRow ? r.deliveryDate.text : '',
 			'KG lấy': r.pickupKg,
 			'KG giao': r.deliveryKg,
 			'Tiền ứng': r.isFirstRow ? r.advance : '',
@@ -435,15 +440,15 @@ export async function exportPDF(trips: Trip[], rangeLabel: string = '') {
 	doc.setLineWidth(0.5);
 	doc.line(14, 28, 283, 28);
 
-	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày gửi', 'Ngày nhận', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Dư cuối', 'TT'];
+	const headers = ['Tài xế', 'Chuyến', 'Nơi lấy', 'Nơi giao', 'Ngày lấy', 'Ngày giao', 'KG lấy', 'KG giao', 'Tiền ứng', 'Dư đầu', 'Dầu NP', 'Dầu HN (L)', 'Dầu Kho (L)', 'Bốc xếp', 'Phát sinh', 'Tổng CP', 'Dư cuối', 'TT'];
 	const rows = expandToRows(trips);
 	const body = rows.map(r => [
 		r.driver,
 		String(r.tripNumber),
 		r.pickupLabel,
 		r.deliveryLabel,
-		r.isFirstRow ? r.dateShort : '',
-		r.isFirstRow ? r.receivedDateShort : '',
+		r.isFirstRow ? r.pickupDate.text : '',
+		r.isFirstRow ? r.deliveryDate.text : '',
 		r.pickupKg ? r.pickupKg.toLocaleString() : '',
 		r.deliveryKg ? r.deliveryKg.toLocaleString() : '',
 		r.isFirstRow ? vnd(r.advance) : '',

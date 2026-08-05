@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fetchSummary, fetchTrips, fetchDrivers, fetchLocations, wipePreviousMonths, ApiError } from '$lib/api/client';
 	import type { DashboardSummary, Trip, Filters, DisplayRow, StopRecord, WipeResult } from '$lib/api/types';
-	import { vnd, formatDate } from '$lib/format';
+	import { vnd, formatDateTime } from '$lib/format';
 	import { exportCSV, exportExcel, exportJSON, exportPDF } from '$lib/exports/exporter';
 	import CostBreakdown from '$lib/charts/CostBreakdown.svelte';
 	import WeightChart from '$lib/charts/WeightChart.svelte';
@@ -465,8 +465,8 @@
 						<th>Chuyến</th>
 						<th>Nơi lấy</th>
 						<th>Nơi giao</th>
-						<th>Ngày gửi</th>
-						<th>Ngày nhận</th>
+						<th>Ngày lấy</th>
+						<th>Ngày giao</th>
 						<th>KG lấy</th>
 						<th>KG giao</th>
 						<th>Tiền ứng</th>
@@ -506,8 +506,8 @@
 									<span class="text-muted">—</span>
 								{/if}
 							</td>
-							<td>{row.isFirstRow ? formatDate(row.submittedAt) : ''}</td>
-							<td>{row.isFirstRow ? formatDate(row.receivedAt) : ''}</td>
+							<td>{row.isFirstRow ? formatDateTime(row.submittedAt) : ''}</td>
+							<td>{row.isFirstRow ? formatDateTime(row.receivedAt) : ''}</td>
 							<td class="number">{row.pickupWeightKg ? row.pickupWeightKg.toLocaleString() : ''}</td>
 							<td class="number">{row.deliveryWeightKg ? row.deliveryWeightKg.toLocaleString() : ''}</td>
 							<td class="number">{row.isFirstRow ? vnd(row.advancePayment) : ''}</td>
